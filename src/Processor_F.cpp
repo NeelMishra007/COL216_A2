@@ -331,55 +331,91 @@ void process_ALU(ALU &ALU, ID &ID, WB &WB, DM &DM)
             }
         }
     }
-    if (ID.ALUOp == 0)
+    int arg1 = 0;
+    int arg2 = 0;
+    if (DM.RegWrite == true && DM.WriteReg == ID.RR1)
     {
-        if (ID.ALUSrc == true)
+        if (DM.MemtoReg == true)
         {
-            if (DM.RegWrite == true && DM.WriteReg == ID.RR1)
+            if (DM.stalls == 0)
             {
-                if (DM.MemtoReg == true)
-                {
-                    if (DM.stalls == 0)
-                    {
-                        ALU.InStr = -1;
-                        return;
-                    }
-                    else
-                        ALU.ALU_res = DM.Read_data + ID.Imm;
-                }
-                else
-                {
-                    ALU.ALU_res = DM.ALU_res + ID.Imm;
-                }
+                ALU.InStr = -1;
+                return;
             }
-            else if (WB.RegWrite == true && WB.WriteReg == ID.RR1)
+            else
+                arg1 = DM.Read_data;
+        }
+        else
+        {
+            arg1 = DM.ALU_res;
+        }
+    }
+    else if (WB.RegWrite == true && WB.WriteReg == ID.RR1)
+    {
+        if (WB.MemtoReg == true)
+        {
+            arg1 = WB.Read_data;
+        }
+        else
+        {
+            arg1 = WB.ALU_res;
+        }
+    }
+    else
+    {
+        arg1 = ID.RD1;
+    }
+    if (ID.ALUSrc == true)
+    {
+        arg2 = ID.Imm;
+    }
+    else
+    {
+        if (DM.RegWrite == true && DM.WriteReg == ID.RR2)
+        {
+            if (DM.MemtoReg == true)
             {
-                if (WB.MemtoReg == true)
+                if (DM.stalls == 0)
                 {
-                    ALU.ALU_res = WB.Read_data + ID.Imm;
+                    ALU.InStr = -1;
+                    return;
                 }
                 else
-                {
-                    ALU.ALU_res = WB.ALU_res + ID.Imm;
-                }
+                    arg2 = DM.Read_data;
             }
             else
             {
-                ALU.ALU_res = ID.RD1 + ID.Imm;
+                arg2 = DM.ALU_res;
+            }
+        }
+        else if (WB.RegWrite == true && WB.WriteReg == ID.RR2)
+        {
+            if (WB.MemtoReg == true)
+            {
+                arg2 = WB.Read_data;
+            }
+            else
+            {
+                arg2 = WB.ALU_res;
             }
         }
         else
         {
-            ALU.ALU_res = ID.RD1 + ID.RD2;
+            arg2 = ID.RD2;
         }
+    }
+
+    if (ID.ALUOp == 0)
+    {
+        ALU.ALU_res = arg1 + arg2;
     }
     else if (ID.ALUOp == 1)
     {
-        ALU.ALU_res = ALU.WriteData - ID.Imm;
+        ALU.ALU_res = arg1 - arg2;
     }
     else if (ID.ALUOp == 2)
     {
-        ALU.ALU_res = ALU.WriteData + ID.RD1;
+        ALU.ALU_res = arg1 * arg2;
     }
     else if (ID.ALUOp == 3)
     {
