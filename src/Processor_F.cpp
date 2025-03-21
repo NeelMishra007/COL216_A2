@@ -206,63 +206,39 @@ int main(int argc, char **argv)
     // Pipeline simulation loop
     for (int cycle = 1; cycle <= num; cycle++)
     {
-        // Process stages in reverse order to avoid overwriting
-        // Write-Back stage
-        if (DM.InStr != -1) {
-            process_WB(WB, DM);
-            if (WB.InStr != -1) {
-                Output[4][WB.InStr] = cycle; // Record WB cycle
-            }
+        process_WB(WB, DM);
+        if (WB.InStr != -1) {
+            Output[4][WB.InStr] = cycle; // Record WB cycle
         }
+
+        if (WB.InStr == total_instructions) break;
         
         // Memory Access stage
+        process_DM(DM, ALU, WB);
+        if (DM.InStr != -1 && DM.stalls == 0) {
+            Output[3][DM.InStr] = cycle; // Record DM cycle
+        }
+         
+        process_ALU(ALU, ID, WB, DM);
         if (ALU.InStr != -1) {
-            process_DM(DM, ALU, WB);
-            if (DM.InStr != -1 && DM.stalls == 0) {
-                Output[3][DM.InStr] = cycle; // Record DM cycle
-            }
+            Output[2][ALU.InStr] = cycle; // Record ALU cycle
         }
-        
-        // Execute stage
-        if (ID.InStr != -1) {
-            process_ALU(ALU, ID, WB, DM);
-            if (ALU.InStr != -1) {
-                Output[2][ALU.InStr] = cycle; // Record ALU cycle
-            }
-        }
-        
         // Instruction Decode stage
-        if (IF.InStr != -1) {
-            process_ID(ALU, ID, RegFile, instructions_hex);
-            if (ID.InStr != -1) {
-                Output[1][ID.InStr] = cycle; // Record ID cycle
-            }
+        process_ID(ALU, ID, RegFile, instructions_hex);
+        if (ID.InStr != -1) {
+            Output[1][ID.InStr] = cycle; // Record ID cycle
         }
         
         // Instruction Fetch stage
-        if (IF.PC < total_instructions) {
-            process_IF(IF, ID);
-            if (IF.InStr != -1 && IF.InStr < total_instructions) {
-                Output[0][IF.InStr] = cycle; // Record IF cycle
-            }
+        process_IF(IF, ID);
+        if (IF.InStr != -1 && IF.InStr < total_instructions) {
+            Output[0][IF.InStr] = cycle; // Record IF cycle
         }
         
-        // Check if all instructions have completed the pipeline
-        bool all_done = true;
-        for (int i = 0; i < total_instructions; i++) {
-            if (Output[4][i] == -1) { // If any instruction hasn't reached WB
-                all_done = false;
-                break;
-            }
-        }
-        
-        if (all_done && IF.PC >= total_instructions) {
-            break; // Exit loop if all instructions have completed
-        }
     }
 
     // Print results
-    cout << "Instruction\tIF\tID\tALU\tDM\tWB" << endl;
+    cout << "Instr\tIF\tID\tALU\tDM\tWB" << endl;
     for (int i = 0; i < total_instructions; i++) {
         cout << instructions_print[i] << "\t";
         for (int j = 0; j < 5; j++) {
@@ -287,13 +263,13 @@ void process_IF(IF &IF, ID &ID)
 }
 void process_ID(ALU &ALU, ID &ID, Register RegFile[32], vector<string> instructions)
 {
+    if (ID.InStr == -1 || ID.InStr >= instructions.size()) return;
     // Fetch instruction and convert from hex to binary.
     string instr = instructions[ID.InStr];
     instr = hexToBin(instr);
     
     // Get opcode from bits 25 to 31.
     string opcode = instr.substr(25, 7);
-    cout << opcode << endl;
     // R‑type instructions
     if (opcode == "0110011")
     {
@@ -579,7 +555,7 @@ void process_ALU(ALU &ALU, ID &ID, WB &WB, DM &DM)
         return;
         
     // Set ALU control signals from the ID stage.
-    ALU.InStr       = ID.InStr;
+    ALU.InStr       = ID.InStr - 1;
     ALU.WriteReg    = ID.WR;
     ALU.Branch      = ID.Branch;
     ALU.Jump        = ID.Jump;
@@ -713,6 +689,10 @@ void process_ALU(ALU &ALU, ID &ID, WB &WB, DM &DM)
     
     // Set the zero flag.
     ALU.Zero = (ALU.ALU_res == 0);
+
+    if (ALU.Zero && ALU.Branch) {
+
+    }
 }
 
 
