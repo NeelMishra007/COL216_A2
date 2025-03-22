@@ -10,7 +10,8 @@ using namespace std;
 const int N = 2e6 + 5;
 int MEM[N];
 
-typedef struct {
+typedef struct
+{
     int value;
 } Register;
 
@@ -46,6 +47,7 @@ typedef struct
     int PC;
     bool PCSrc;
     int InStr;
+    bool stall;
 } IF;
 
 typedef struct
@@ -151,8 +153,8 @@ typedef struct
 
 // Function prototypes
 void process_IF(IF &IF, ID &ID);
-void process_ID(ALU &ALU, ID &ID, Register RegFile[32], vector<string> instructions);
-void process_ALU(ALU &ALU, ID &ID, WB &WB, DM &DM);
+void process_ID(IF &IF, ALU &ALU, ID &ID, Register RegFile[32], vector<string> instructions);
+void process_ALU(IF &IF, ALU &ALU, ID &ID, WB &WB, DM &DM);
 void process_DM(DM &DM, ALU &ALU, WB &WB);
 void process_WB(WB &WB, DM &DM);
 
@@ -193,9 +195,10 @@ int main(int argc, char **argv)
 
     // Arrays to store cycle information for each instruction
     vector<int> Output[5]; // [IF, ID, ALU, DM, WB] cycles for each instruction
-    
+
     // Initialize Output arrays
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 5; i++)
+    {
         Output[i].resize(instructions_hex.size(), -1);
     }
 
@@ -207,44 +210,54 @@ int main(int argc, char **argv)
     for (int cycle = 1; cycle <= num; cycle++)
     {
         process_WB(WB, DM);
-        if (WB.InStr != -1) {
+        if (WB.InStr != -1)
+        {
             Output[4][WB.InStr] = cycle; // Record WB cycle
         }
 
-        if (WB.InStr == total_instructions) break;
-        
+        if (WB.InStr == total_instructions)
+            break;
+
         // Memory Access stage
         process_DM(DM, ALU, WB);
-        if (DM.InStr != -1 && DM.stalls == 0) {
+        if (DM.InStr != -1 && DM.stalls == 0)
+        {
             Output[3][DM.InStr] = cycle; // Record DM cycle
         }
-         
-        process_ALU(ALU, ID, WB, DM);
-        if (ALU.InStr != -1) {
+
+        process_ALU(IF, ALU, ID, WB, DM);
+        if (ALU.InStr != -1)
+        {
             Output[2][ALU.InStr] = cycle; // Record ALU cycle
         }
         // Instruction Decode stage
-        process_ID(ALU, ID, RegFile, instructions_hex);
-        if (ID.InStr != -1) {
+        process_ID(IF, ALU, ID, RegFile, instructions_hex);
+        if (ID.InStr != -1)
+        {
             Output[1][ID.InStr] = cycle; // Record ID cycle
         }
-        
+
         // Instruction Fetch stage
         process_IF(IF, ID);
-        if (IF.InStr != -1 && IF.InStr < total_instructions) {
+        if (IF.InStr != -1 && IF.InStr < total_instructions)
+        {
             Output[0][IF.InStr] = cycle; // Record IF cycle
         }
-        
     }
 
     // Print results
     cout << "Instr\tIF\tID\tALU\tDM\tWB" << endl;
-    for (int i = 0; i < total_instructions; i++) {
+    for (int i = 0; i < total_instructions; i++)
+    {
         cout << instructions_print[i] << "\t";
-        for (int j = 0; j < 5; j++) {
-            if (Output[j][i] == -1) {
+        for (int j = 0; j < 5; j++)
+        {
+            if (Output[j][i] == -1)
+            {
                 cout << "-\t";
-            } else {
+            }
+            else
+            {
                 cout << Output[j][i] << "\t";
             }
         }
@@ -257,17 +270,23 @@ int main(int argc, char **argv)
 
 void process_IF(IF &IF, ID &ID)
 {
-    ID.InStr = IF.PC;
+    if (IF.stall == true)
+    {
+        IF.stall = false;
+        IF.PC--;
+    }
     IF.InStr = IF.PC;
     IF.PC += 1;
 }
-void process_ID(ALU &ALU, ID &ID, Register RegFile[32], vector<string> instructions)
+void process_ID(IF &IF, ALU &ALU, ID &ID, Register RegFile[32], vector<string> instructions)
 {
-    if (ID.InStr == -1 || ID.InStr >= instructions.size()) return;
+    ID.InStr = IF.InStr;
+    if (ID.InStr == -1 || ID.InStr >= instructions.size())
+        return;
     // Fetch instruction and convert from hex to binary.
     string instr = instructions[ID.InStr];
     instr = hexToBin(instr);
-    
+
     // Get opcode from bits 25 to 31.
     string opcode = instr.substr(25, 7);
     // R‑type instructions
@@ -278,11 +297,15 @@ void process_ID(ALU &ALU, ID &ID, Register RegFile[32], vector<string> instructi
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2); // rs1
             ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);  // rs2
-            ID.WR  = stoi(instr.substr(20, 5), nullptr, 2); // rd
-            ID.RegWrite = true;  ID.RegDst = true;
-            ID.Branch = false;   ID.Jump = false;
-            ID.MemRead = false;  ID.MemWrite = false;
-            ID.ALUSrc = false;   ID.ALUOp = 2;  // Addition
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);  // rd
+            ID.RegWrite = true;
+            ID.RegDst = true;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = false;
+            ID.ALUOp = 2; // Addition
             ID.MemtoReg = false;
         }
         // SUB: opcode = 0110011, funct7 = 0100000, funct3 = 000
@@ -290,11 +313,15 @@ void process_ID(ALU &ALU, ID &ID, Register RegFile[32], vector<string> instructi
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
             ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);
-            ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
-            ID.RegWrite = true;  ID.RegDst = true;
-            ID.Branch = false;   ID.Jump = false;
-            ID.MemRead = false;  ID.MemWrite = false;
-            ID.ALUSrc = false;   ID.ALUOp = 3;  // Subtraction
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.RegWrite = true;
+            ID.RegDst = true;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = false;
+            ID.ALUOp = 3; // Subtraction
             ID.MemtoReg = false;
         }
         // SLL: Shift Left Logical, funct7 = 0000000, funct3 = 001
@@ -302,11 +329,15 @@ void process_ID(ALU &ALU, ID &ID, Register RegFile[32], vector<string> instructi
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
             ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2); // shift amount in lower bits of rs2
-            ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
-            ID.RegWrite = true;  ID.RegDst = true;
-            ID.Branch = false;   ID.Jump = false;
-            ID.MemRead = false;  ID.MemWrite = false;
-            ID.ALUSrc = false;   ID.ALUOp = 7;  // SLL
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.RegWrite = true;
+            ID.RegDst = true;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = false;
+            ID.ALUOp = 7; // SLL
             ID.MemtoReg = false;
         }
         // SRL: Shift Right Logical, funct7 = 0000000, funct3 = 101
@@ -314,11 +345,15 @@ void process_ID(ALU &ALU, ID &ID, Register RegFile[32], vector<string> instructi
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
             ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2); // shift amount
-            ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
-            ID.RegWrite = true;  ID.RegDst = true;
-            ID.Branch = false;   ID.Jump = false;
-            ID.MemRead = false;  ID.MemWrite = false;
-            ID.ALUSrc = false;   ID.ALUOp = 8;  // SRL
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.RegWrite = true;
+            ID.RegDst = true;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = false;
+            ID.ALUOp = 8; // SRL
             ID.MemtoReg = false;
         }
         // SRA: Shift Right Arithmetic, funct7 = 0100000, funct3 = 101
@@ -326,11 +361,15 @@ void process_ID(ALU &ALU, ID &ID, Register RegFile[32], vector<string> instructi
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
             ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2); // shift amount
-            ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
-            ID.RegWrite = true;  ID.RegDst = true;
-            ID.Branch = false;   ID.Jump = false;
-            ID.MemRead = false;  ID.MemWrite = false;
-            ID.ALUSrc = false;   ID.ALUOp = 9;  // SRA
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.RegWrite = true;
+            ID.RegDst = true;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = false;
+            ID.ALUOp = 9; // SRA
             ID.MemtoReg = false;
         }
         // SLT: Set Less Than (signed), funct7 = 0000000, funct3 = 010
@@ -338,11 +377,15 @@ void process_ID(ALU &ALU, ID &ID, Register RegFile[32], vector<string> instructi
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
             ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);
-            ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
-            ID.RegWrite = true;  ID.RegDst = true;
-            ID.Branch = false;   ID.Jump = false;
-            ID.MemRead = false;  ID.MemWrite = false;
-            ID.ALUSrc = false;   ID.ALUOp = 10; // SLT
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.RegWrite = true;
+            ID.RegDst = true;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = false;
+            ID.ALUOp = 10; // SLT
             ID.MemtoReg = false;
         }
         // SLTU: Set Less Than Unsigned, funct7 = 0000000, funct3 = 011
@@ -350,11 +393,15 @@ void process_ID(ALU &ALU, ID &ID, Register RegFile[32], vector<string> instructi
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
             ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);
-            ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
-            ID.RegWrite = true;  ID.RegDst = true;
-            ID.Branch = false;   ID.Jump = false;
-            ID.MemRead = false;  ID.MemWrite = false;
-            ID.ALUSrc = false;   ID.ALUOp = 11; // SLTU
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.RegWrite = true;
+            ID.RegDst = true;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = false;
+            ID.ALUOp = 11; // SLTU
             ID.MemtoReg = false;
         }
         // AND: opcode = 0110011, funct7 = 0000000, funct3 = 111
@@ -362,11 +409,15 @@ void process_ID(ALU &ALU, ID &ID, Register RegFile[32], vector<string> instructi
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
             ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);
-            ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
-            ID.RegWrite = true;  ID.RegDst = true;
-            ID.Branch = false;   ID.Jump = false;
-            ID.MemRead = false;  ID.MemWrite = false;
-            ID.ALUSrc = false;   ID.ALUOp = 4;  // AND
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.RegWrite = true;
+            ID.RegDst = true;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = false;
+            ID.ALUOp = 4; // AND
             ID.MemtoReg = false;
         }
         // OR: opcode = 0110011, funct7 = 0000000, funct3 = 110
@@ -374,11 +425,15 @@ void process_ID(ALU &ALU, ID &ID, Register RegFile[32], vector<string> instructi
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
             ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);
-            ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
-            ID.RegWrite = true;  ID.RegDst = true;
-            ID.Branch = false;   ID.Jump = false;
-            ID.MemRead = false;  ID.MemWrite = false;
-            ID.ALUSrc = false;   ID.ALUOp = 5;  // OR
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.RegWrite = true;
+            ID.RegDst = true;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = false;
+            ID.ALUOp = 5; // OR
             ID.MemtoReg = false;
         }
         // XOR: opcode = 0110011, funct7 = 0000000, funct3 = 100
@@ -386,11 +441,15 @@ void process_ID(ALU &ALU, ID &ID, Register RegFile[32], vector<string> instructi
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
             ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);
-            ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
-            ID.RegWrite = true;  ID.RegDst = true;
-            ID.Branch = false;   ID.Jump = false;
-            ID.MemRead = false;  ID.MemWrite = false;
-            ID.ALUSrc = false;   ID.ALUOp = 6;  // XOR
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.RegWrite = true;
+            ID.RegDst = true;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = false;
+            ID.ALUOp = 6; // XOR
             ID.MemtoReg = false;
         }
     }
@@ -401,105 +460,136 @@ void process_ID(ALU &ALU, ID &ID, Register RegFile[32], vector<string> instructi
         if (instr.substr(17, 3) == "000")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
-            ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
             // For non‑shift I‑type instructions, immediate is from bits 0–11.
             ID.Imm = stoi(instr.substr(0, 12), nullptr, 2);
-            ID.RegWrite = true;  ID.RegDst = false;
-            ID.Branch = false;   ID.Jump = false;
-            ID.MemRead = false;  ID.MemWrite = false;
-            ID.ALUSrc = true;    ID.ALUOp = 2;  // ADDI uses addition
+            ID.RegWrite = true;
+            ID.RegDst = false;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = true;
+            ID.ALUOp = 2; // ADDI uses addition
             ID.MemtoReg = false;
         }
         // SLLI: Shift Left Logical Immediate, funct3 = "001"
         else if (instr.substr(17, 3) == "001")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
-            ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
             // For shift immediates, the shift amount comes from bits 20–24.
             ID.Imm = stoi(instr.substr(20, 5), nullptr, 2);
-            ID.RegWrite = true;  ID.RegDst = false;
-            ID.Branch = false;   ID.Jump = false;
-            ID.MemRead = false;  ID.MemWrite = false;
-            ID.ALUSrc = true;    ID.ALUOp = 7;  // SLLI
+            ID.RegWrite = true;
+            ID.RegDst = false;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = true;
+            ID.ALUOp = 7; // SLLI
             ID.MemtoReg = false;
         }
         // SRLI / SRAI: Shift Right Logical/Arithmetic Immediate, funct3 = "101"
         else if (instr.substr(17, 3) == "101")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
-            ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
             // For shift immediates, shift amount is in bits 20–24.
             ID.Imm = stoi(instr.substr(20, 5), nullptr, 2);
-            ID.RegWrite = true;  ID.RegDst = false;
-            ID.Branch = false;   ID.Jump = false;
-            ID.MemRead = false;  ID.MemWrite = false;
+            ID.RegWrite = true;
+            ID.RegDst = false;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
             ID.ALUSrc = true;
             // Determine if this is SRLI or SRAI by checking the higher bits (bits 0–7)
             if (instr.substr(0, 7) == "0000000")
-                ID.ALUOp = 8;  // SRLI
+                ID.ALUOp = 8; // SRLI
             else if (instr.substr(0, 7) == "0100000")
-                ID.ALUOp = 9;  // SRAI
+                ID.ALUOp = 9; // SRAI
             ID.MemtoReg = false;
         }
         // SLTI: Set Less Than Immediate (signed), funct3 = "010"
         else if (instr.substr(17, 3) == "010")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
-            ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
             // Immediate from bits 0–11.
             ID.Imm = stoi(instr.substr(0, 12), nullptr, 2);
-            ID.RegWrite = true;  ID.RegDst = false;
-            ID.Branch = false;   ID.Jump = false;
-            ID.MemRead = false;  ID.MemWrite = false;
-            ID.ALUSrc = true;    ID.ALUOp = 10; // SLTI
+            ID.RegWrite = true;
+            ID.RegDst = false;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = true;
+            ID.ALUOp = 10; // SLTI
             ID.MemtoReg = false;
         }
         // SLTIU: Set Less Than Immediate Unsigned, funct3 = "011"
         else if (instr.substr(17, 3) == "011")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
-            ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
             ID.Imm = stoi(instr.substr(0, 12), nullptr, 2);
-            ID.RegWrite = true;  ID.RegDst = false;
-            ID.Branch = false;   ID.Jump = false;
-            ID.MemRead = false;  ID.MemWrite = false;
-            ID.ALUSrc = true;    ID.ALUOp = 11; // SLTIU
+            ID.RegWrite = true;
+            ID.RegDst = false;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = true;
+            ID.ALUOp = 11; // SLTIU
             ID.MemtoReg = false;
         }
         // ANDI: funct3 = "111"
         else if (instr.substr(17, 3) == "111")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
-            ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
             ID.Imm = stoi(instr.substr(0, 12), nullptr, 2);
-            ID.RegWrite = true;  ID.RegDst = false;
-            ID.Branch = false;   ID.Jump = false;
-            ID.MemRead = false;  ID.MemWrite = false;
-            ID.ALUSrc = true;    ID.ALUOp = 4;  // ANDI
+            ID.RegWrite = true;
+            ID.RegDst = false;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = true;
+            ID.ALUOp = 4; // ANDI
             ID.MemtoReg = false;
         }
         // ORI: funct3 = "110"
         else if (instr.substr(17, 3) == "110")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
-            ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
             ID.Imm = stoi(instr.substr(0, 12), nullptr, 2);
-            ID.RegWrite = true;  ID.RegDst = false;
-            ID.Branch = false;   ID.Jump = false;
-            ID.MemRead = false;  ID.MemWrite = false;
-            ID.ALUSrc = true;    ID.ALUOp = 5;  // ORI
+            ID.RegWrite = true;
+            ID.RegDst = false;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = true;
+            ID.ALUOp = 5; // ORI
             ID.MemtoReg = false;
         }
         // XORI: funct3 = "100"
         else if (instr.substr(17, 3) == "100")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
-            ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
             ID.Imm = stoi(instr.substr(0, 12), nullptr, 2);
-            ID.RegWrite = true;  ID.RegDst = false;
-            ID.Branch = false;   ID.Jump = false;
-            ID.MemRead = false;  ID.MemWrite = false;
-            ID.ALUSrc = true;    ID.ALUOp = 6;  // XORI
+            ID.RegWrite = true;
+            ID.RegDst = false;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = true;
+            ID.ALUOp = 6; // XORI
             ID.MemtoReg = false;
         }
     }
@@ -507,12 +597,16 @@ void process_ID(ALU &ALU, ID &ID, Register RegFile[32], vector<string> instructi
     else if (opcode == "0000011")
     {
         ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2); // base register
-        ID.WR  = stoi(instr.substr(20, 5), nullptr, 2); // destination register
+        ID.WR = stoi(instr.substr(20, 5), nullptr, 2);  // destination register
         ID.Imm = stoi(instr.substr(0, 12), nullptr, 2);
-        ID.RegWrite = true;  ID.RegDst = false;
-        ID.Branch = false;   ID.Jump = false;
-        ID.MemRead = true;   ID.MemWrite = false;
-        ID.ALUSrc = true;    ID.ALUOp = 2;  // Address calculation uses addition
+        ID.RegWrite = true;
+        ID.RegDst = false;
+        ID.Branch = false;
+        ID.Jump = false;
+        ID.MemRead = true;
+        ID.MemWrite = false;
+        ID.ALUSrc = true;
+        ID.ALUOp = 2; // Address calculation uses addition
         ID.MemtoReg = true;
     }
     // S‑type: Store Word (SW)
@@ -522,10 +616,14 @@ void process_ID(ALU &ALU, ID &ID, Register RegFile[32], vector<string> instructi
         ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);  // source register
         string imm_str = instr.substr(0, 7) + instr.substr(20, 5);
         ID.Imm = stoi(imm_str, nullptr, 2);
-        ID.RegWrite = false; ID.RegDst = false;
-        ID.Branch = false;   ID.Jump = false;
-        ID.MemRead = false;  ID.MemWrite = true;
-        ID.ALUSrc = true;    ID.ALUOp = 2;  // Address calculation uses addition
+        ID.RegWrite = false;
+        ID.RegDst = false;
+        ID.Branch = false;
+        ID.Jump = false;
+        ID.MemRead = false;
+        ID.MemWrite = true;
+        ID.ALUSrc = true;
+        ID.ALUOp = 2; // Address calculation uses addition
     }
     // B‑type: Branch Equal (BEQ)
     else if (opcode == "1100011")
@@ -535,37 +633,41 @@ void process_ID(ALU &ALU, ID &ID, Register RegFile[32], vector<string> instructi
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
             ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);
             string imm_branch = "";
-            imm_branch += instr.substr(0, 1);    // imm[12]
-            imm_branch += instr.substr(1, 6);    // imm[10:5]
-            imm_branch += instr.substr(7, 1);    // imm[11]
-            imm_branch += instr.substr(20, 4);   // imm[4:1]
-            imm_branch += "0";                   // branch addresses are 2-byte aligned
+            imm_branch += instr.substr(0, 1);  // imm[12]
+            imm_branch += instr.substr(1, 6);  // imm[10:5]
+            imm_branch += instr.substr(7, 1);  // imm[11]
+            imm_branch += instr.substr(20, 4); // imm[4:1]
+            imm_branch += "0";                 // branch addresses are 2-byte aligned
             ID.Imm = stoi(imm_branch, nullptr, 2);
-            ID.RegWrite = false; ID.RegDst = false;
-            ID.Branch = true;    ID.Jump = false;
-            ID.MemRead = false;  ID.MemWrite = false;
-            ID.ALUSrc = false;   ID.ALUOp = 3;  // Subtraction for comparison
+            ID.RegWrite = false;
+            ID.RegDst = false;
+            ID.Branch = true;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = false;
+            ID.ALUOp = 3; // Subtraction for comparison
         }
     }
 }
 
-void process_ALU(ALU &ALU, ID &ID, WB &WB, DM &DM)
+void process_ALU(IF &IF, ALU &ALU, ID &ID, WB &WB, DM &DM)
 {
     if (ID.InStr == -1)
         return;
-        
+
     // Set ALU control signals from the ID stage.
-    ALU.InStr       = ID.InStr - 1;
-    ALU.WriteReg    = ID.WR;
-    ALU.Branch      = ID.Branch;
-    ALU.Jump        = ID.Jump;
-    ALU.MemRead     = ID.MemRead;
-    ALU.MemWrite    = ID.MemWrite;
-    ALU.MemtoReg    = ID.MemtoReg;
-    ALU.RegWrite    = ID.RegWrite;
-    
+    ALU.InStr = ID.InStr - 1;
+    ALU.WriteReg = ID.WR;
+    ALU.Branch = ID.Branch;
+    ALU.Jump = ID.Jump;
+    ALU.MemRead = ID.MemRead;
+    ALU.MemWrite = ID.MemWrite;
+    ALU.MemtoReg = ID.MemtoReg;
+    ALU.RegWrite = ID.RegWrite;
+
     // For store instructions, prepare the write data and check for forwarding.
-    ALU.WriteData   = ID.RD2;
+    ALU.WriteData = ID.RD2;
     ALU.WriteDataReg = ID.RR2;
     if (ALU.MemWrite == true) // Forwarding for DM last-to-last instruction.
     {
@@ -577,7 +679,7 @@ void process_ALU(ALU &ALU, ID &ID, WB &WB, DM &DM)
                 ALU.WriteData = WB.ALU_res;
         }
     }
-    
+
     // Determine first operand (arg1) with hazard forwarding.
     int arg1 = 0;
     if (DM.RegWrite == true && DM.WriteReg == ID.RR1)
@@ -606,7 +708,7 @@ void process_ALU(ALU &ALU, ID &ID, WB &WB, DM &DM)
     {
         arg1 = ID.RD1;
     }
-    
+
     // Determine second operand (arg2) – immediate or register with forwarding.
     int arg2 = 0;
     if (ID.ALUSrc == true)
@@ -622,6 +724,7 @@ void process_ALU(ALU &ALU, ID &ID, WB &WB, DM &DM)
                 if (DM.stalls == 0)
                 {
                     ALU.InStr = -1;
+                    IF.stall = true;
                     return;
                 }
                 else
@@ -644,62 +747,62 @@ void process_ALU(ALU &ALU, ID &ID, WB &WB, DM &DM)
             arg2 = ID.RD2;
         }
     }
-    
+
     // Perform ALU operation based on ALUOp.
     // Mapping of ALUOp values:
     //  2: Addition, 3: Subtraction, 4: AND, 5: OR, 6: XOR,
     //  7: SLL, 8: SRL, 9: SRA, 10: SLT, 11: SLTU.
     switch (ID.ALUOp)
     {
-        case 2: // ADD / ADDI / LW / SW effective address calculation
-            ALU.ALU_res = arg1 + arg2;
-            break;
-        case 3: // SUB / BEQ
-            ALU.ALU_res = arg1 - arg2;
-            break;
-        case 4: // AND / ANDI
-            ALU.ALU_res = arg1 & arg2;
-            break;
-        case 5: // OR / ORI
-            ALU.ALU_res = arg1 | arg2;
-            break;
-        case 6: // XOR / XORI
-            ALU.ALU_res = arg1 ^ arg2;
-            break;
-        case 7: // SLL / SLLI (shift left logical)
-            ALU.ALU_res = arg1 << (arg2 & 0x1F);
-            break;
-        case 8: // SRL / SRLI (logical right shift)
-            ALU.ALU_res = ((unsigned int)arg1) >> (arg2 & 0x1F);
-            break;
-        case 9: // SRA / SRAI (arithmetic right shift)
-            ALU.ALU_res = arg1 >> (arg2 & 0x1F);
-            break;
-        case 10: // SLT / SLTI (set less than, signed)
-            ALU.ALU_res = (arg1 < arg2) ? 1 : 0;
-            break;
-        case 11: // SLTU / SLTIU (set less than, unsigned)
-            ALU.ALU_res = (((unsigned int)arg1) < ((unsigned int)arg2)) ? 1 : 0;
-            break;
-        default:
-            // If ALUOp is not recognized, default to addition.
-            ALU.ALU_res = arg1 + arg2;
-            break;
+    case 2: // ADD / ADDI / LW / SW effective address calculation
+        ALU.ALU_res = arg1 + arg2;
+        break;
+    case 3: // SUB / BEQ
+        ALU.ALU_res = arg1 - arg2;
+        break;
+    case 4: // AND / ANDI
+        ALU.ALU_res = arg1 & arg2;
+        break;
+    case 5: // OR / ORI
+        ALU.ALU_res = arg1 | arg2;
+        break;
+    case 6: // XOR / XORI
+        ALU.ALU_res = arg1 ^ arg2;
+        break;
+    case 7: // SLL / SLLI (shift left logical)
+        ALU.ALU_res = arg1 << (arg2 & 0x1F);
+        break;
+    case 8: // SRL / SRLI (logical right shift)
+        ALU.ALU_res = ((unsigned int)arg1) >> (arg2 & 0x1F);
+        break;
+    case 9: // SRA / SRAI (arithmetic right shift)
+        ALU.ALU_res = arg1 >> (arg2 & 0x1F);
+        break;
+    case 10: // SLT / SLTI (set less than, signed)
+        ALU.ALU_res = (arg1 < arg2) ? 1 : 0;
+        break;
+    case 11: // SLTU / SLTIU (set less than, unsigned)
+        ALU.ALU_res = (((unsigned int)arg1) < ((unsigned int)arg2)) ? 1 : 0;
+        break;
+    default:
+        // If ALUOp is not recognized, default to addition.
+        ALU.ALU_res = arg1 + arg2;
+        break;
     }
-    
+
     // Set the zero flag.
     ALU.Zero = (ALU.ALU_res == 0);
 
-    if (ALU.Zero && ALU.Branch) {
-
+    if (ALU.Zero && ALU.Branch)
+    {
     }
 }
-
 
 void process_DM(DM &DM, ALU &ALU, WB &WB)
 {
     if (ALU.InStr == -1)
     {
+        DM.InStr = -1;
         DM.stalls++;
         return;
     }
@@ -740,15 +843,17 @@ void process_DM(DM &DM, ALU &ALU, WB &WB)
 
 void process_WB(WB &WB, DM &DM)
 {
-
+    if (DM.InStr == -1)
+    {
+        WB.InStr = -1;
+        return;
+    }
     WB.InStr = DM.InStr;
     WB.Read_data = DM.Read_data;
     WB.MemtoReg = DM.MemtoReg;
     WB.RegWrite = DM.RegWrite;
     WB.ALU_res = DM.ALU_res;
     WB.WriteReg = DM.WriteReg;
-    if (WB.InStr == -1)
-        return;
     if (WB.RegWrite == true)
     {
         if (WB.MemtoReg == true)
