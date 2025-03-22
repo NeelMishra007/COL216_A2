@@ -1,3 +1,9 @@
-1 00a00093 addi x1, x0, 10     // Set x1 = 10 (base address for load)
-2 0000a103 lw   x2, 0(x1)      // Load word into x2 from address in x1
-3 00210113 addi x2, x2, 2       // Use loaded value in x2 immediately (load–use hazard)
+1  00a00093   addi x1, x0, 10       // Set x1 = 10 (base address)
+2  0000a103   lw   x2, 0(x1)        // Load word into x2 from address in x1
+3  00210113   addi x2, x2, 2         // Use loaded value in x2 immediately (hazard #1)
+4  0000a183   lw   x3, 0(x1)        // Load word into x3 from same address in x1
+5  00318193   addi x3, x3, 3         // Use loaded value in x3 immediately (hazard #2)
+6  0000a203   lw   x4, 0(x1)        // Load word into x4 from same address in x1
+7  00420293   addi x4, x4, 4         // Use loaded value in x4 immediately (hazard #3)
+8  0000a283   lw   x5, 0(x1)        // Load word into x5 from same address in x1
+9  00528313   addi x5, x5, 5         // Use loaded value in x5 immediately (hazard #4)
