@@ -153,7 +153,6 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    // Read instructions (assumed format: <line_number> <hex> <printable>)
     vector<string> instructions_hex;
     vector<string> instructions_print;
     string line;
@@ -210,13 +209,43 @@ int main(int argc, char **argv) {
         if (EX.InStr != -1 && EX.InStr < total_instructions && Output[2][EX.InStr] == -1)
             Output[2][EX.InStr] = cycle;
         
-        if (ID.Branch && RegFile[ID.RR1].value == RegFile[ID.RR2].value && !ID.stall) {
-            IF.PC = IF.PC + ID.Imm/4 - 2;  
-            cout << IF.PC << endl;
-            IF.InStr = -1;
-            ID.Branch = false;
+        if (ID.Branch && !ID.stall) {
+            bool branch_taken = false;
+            
+            switch (ID.BranchType) {
+                case 0: // BEQ: Branch if Equal
+                    branch_taken = (RegFile[ID.RR1].value == RegFile[ID.RR2].value);
+                    break;
+                case 1: // BNE: Branch if Not Equal
+                    branch_taken = (RegFile[ID.RR1].value != RegFile[ID.RR2].value);
+                    break;
+                case 2: // BLT: Branch if Less Than (signed)
+                    branch_taken = (RegFile[ID.RR1].value < RegFile[ID.RR2].value);
+                    break;
+                case 3: // BGE: Branch if Greater or Equal (signed)
+                    branch_taken = (RegFile[ID.RR1].value >= RegFile[ID.RR2].value);
+                    break;
+                case 4: // BLTU: Branch if Less Than (unsigned)
+                    branch_taken = ((unsigned)RegFile[ID.RR1].value < (unsigned)RegFile[ID.RR2].value);
+                    break;
+                case 5: // BGEU: Branch if Greater or Equal (unsigned)
+                    branch_taken = ((unsigned)RegFile[ID.RR1].value >= (unsigned)RegFile[ID.RR2].value);
+                    break;
+                default:
+                    cout << "Unknown branch type encountered!" << endl;
+                    break;
+            }
+            
+            if (branch_taken) {
+                // Convert byte offset to instruction offset: assume PC increments by 1 per instruction.
+                // ID.Imm is in bytes so divide by 4, then adjust offset as needed (-2 adjustment as in your design).
+                IF.PC = IF.PC + (ID.Imm / 4) - 2;
+                cout << "Branch taken, new PC: " << IF.PC << endl;
+                IF.InStr = -1; // Insert bubble in IF stage.
+                ID.Branch = false; // Clear branch signal after taken.
+            }
         }
-        // Process ID stage.
+        
         process_ID(IF, ID, instructions_hex);
         if (ID.InStr != -1 && ID.InStr < total_instructions && Output[1][ID.InStr] == -1)
             Output[1][ID.InStr] = cycle;
