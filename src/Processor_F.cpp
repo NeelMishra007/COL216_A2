@@ -205,7 +205,6 @@ int main(int argc, char **argv)
     int num = atoi(argv[2]); // Number of cycles to simulate
     int total_instructions = instructions_hex.size();
 
-    cout << total_instructions << endl;
     // Pipeline simulation loop
     for (int cycle = 1; cycle <= num; cycle++)
     {
@@ -297,6 +296,7 @@ void process_IF(IF &IF, ID &ID)
 void process_ID(IF &IF, ALU &ALU, ID &ID, Register RegFile[32], vector<string> instructions)
 {
     ID.InStr = IF.InStr;
+
     if (ID.InStr == -1 || ID.InStr >= instructions.size())
         return;
     // Fetch instruction and convert from hex to binary.
@@ -673,7 +673,7 @@ void process_ALU(IF &IF, ALU &ALU, ID &ID, WB &WB, DM &DM)
         return;
 
     // Set ALU control signals from the ID stage.
-    ALU.InStr = ID.InStr - 1;
+    ALU.InStr = ID.InStr;
     ALU.WriteReg = ID.WR;
     ALU.Branch = ID.Branch;
     ALU.Jump = ID.Jump;
