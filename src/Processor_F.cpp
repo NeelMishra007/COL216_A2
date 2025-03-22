@@ -210,7 +210,7 @@ int main(int argc, char **argv)
     for (int cycle = 1; cycle <= num; cycle++)
     {
         process_WB(WB, DM);
-        if (WB.InStr != -1)
+        if (WB.InStr != -1 && Output[4][WB.InStr] == -1)
         {
             Output[4][WB.InStr] = cycle; // Record WB cycle
         }
@@ -220,49 +220,65 @@ int main(int argc, char **argv)
 
         // Memory Access stage
         process_DM(DM, ALU, WB);
-        if (DM.InStr != -1 && DM.stalls == 0)
+        if (DM.InStr != -1 && DM.stalls == 0 && Output[3][DM.InStr] == -1)
         {
             Output[3][DM.InStr] = cycle; // Record DM cycle
         }
 
         process_ALU(IF, ALU, ID, WB, DM);
-        if (ALU.InStr != -1)
+        if (ALU.InStr != -1 && Output[2][ALU.InStr] == -1)
         {
             Output[2][ALU.InStr] = cycle; // Record ALU cycle
         }
         // Instruction Decode stage
         process_ID(IF, ALU, ID, RegFile, instructions_hex);
-        if (ID.InStr != -1)
+        if (ID.InStr != -1 && Output[1][ID.InStr] == -1)
         {
             Output[1][ID.InStr] = cycle; // Record ID cycle
         }
 
         // Instruction Fetch stage
         process_IF(IF, ID);
-        if (IF.InStr != -1 && IF.InStr < total_instructions)
+        if (IF.InStr != -1 && IF.InStr < total_instructions && Output[0][IF.InStr] == -1)
         {
             Output[0][IF.InStr] = cycle; // Record IF cycle
         }
     }
 
-    // Print results
-    cout << "Instr\tIF\tID\tALU\tDM\tWB" << endl;
-    for (int i = 0; i < total_instructions; i++)
-    {
+    // Print header: cycle numbers
+    cout << "Instr\t";
+    for (int cycle = 1; cycle <= num; cycle++) {
+        cout << cycle << "\t";
+    }
+    cout << endl;
+
+    // Print each instruction's pipeline stages across cycles
+    for (int i = 0; i < total_instructions; i++) {
         cout << instructions_print[i] << "\t";
-        for (int j = 0; j < 5; j++)
-        {
-            if (Output[j][i] == -1)
-            {
-                cout << "-\t";
+        for (int cycle = 1; cycle <= num; cycle++) {
+            bool printed = false;
+            // Check each stage for this instruction
+            for (int stage = 0; stage < 5; stage++) {
+                if (Output[stage][i] == cycle) {
+                    // Print the corresponding stage name
+                    switch (stage) {
+                        case 0: cout << "IF\t"; break;
+                        case 1: cout << "ID\t"; break;
+                        case 2: cout << "ALU\t"; break;
+                        case 3: cout << "DM\t"; break;
+                        case 4: cout << "WB\t"; break;
+                    }
+                    printed = true;
+                    break;
+                }
             }
-            else
-            {
-                cout << Output[j][i] << "\t";
+            if (!printed) {
+                cout << "-\t";
             }
         }
         cout << endl;
     }
+
 
     file.close();
     return 0;
