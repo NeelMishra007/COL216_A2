@@ -5,6 +5,8 @@
 #include <vector>
 #include <bitset>
 #include <cstdlib>
+#include <cstdint>
+
 
 using namespace std;
 
@@ -47,25 +49,33 @@ struct IFStage {
 };
 
 struct IDStage {
-    int RR1; // source register 1 (e.g., rs)
-    int RR2; // source register 2 (e.g., rt)
-    int WR;  // destination register (could be rd or rt)
-    int RD1; // read data from RegFile for RR1
-    int RD2; // read data from RegFile for RR2
-    int Imm; // sign-extended immediate
-    // Control signals (assumed to be set by your RISCV decode)
-    bool RegWrite;
-    bool RegDst;
-    bool Branch;
-    bool Jump;
-    bool MemRead;
-    bool MemWrite;
-    bool ALUSrc;
-    int ALUOp;      // Operation code for the ALU (e.g., 2 for add, 3 for sub, etc.)
-    bool MemtoReg;
+    int RR1;        // source register 1 (rs1)
+    int RR2;        // source register 2 (rs2)
+    int WR;         // destination register (rd)
+    int RD1;        // read data from RegFile for RR1
+    int RD2;        // read data from RegFile for RR2
+    int Imm;        // sign-extended immediate
     
-    bool stall; // when true, hold the instruction (do not update)
-    int InStr;  // index of instruction; -1 indicates bubble.
+    // Control signals
+    bool RegWrite;  // write to register file
+    bool RegDst;    // determines destination register (used for R-type vs I-type)
+    bool Branch;    // branch instruction
+    bool Jump;      // jump instruction
+    bool MemRead;   // read from memory
+    bool MemWrite;  // write to memory
+    bool ALUSrc;    // selects second ALU input (reg or imm)
+    int ALUOp;      // operation code for the ALU
+    bool MemtoReg;  // selects data to write to register (ALU result or memory)
+    
+    // Additional fields from the code
+    int MemSize;            // size of memory access (1, 2, or 4 bytes)
+    bool MemSignExtend;     // whether to sign-extend memory reads
+    int BranchType;         // type of branch (BEQ, BNE, BLT, etc.)
+    bool JumpAndLink;       // JAL or JALR instruction
+    bool JumpReg;           // JALR instruction (jump to register)
+    
+    bool stall;    // when true, hold the instruction (do not update)
+    int InStr;     // index of instruction; -1 indicates bubble
 };
 
 struct EXStage {
@@ -121,7 +131,7 @@ struct WBStage {
 // Function prototypes – note that the ID stage is assumed to fill in all needed fields.
 void process_IF(IFStage &IF, const vector<string> &instructions);
 void process_ID(IFStage &IF, IDStage &ID, const vector<string> &instructions);
-void process_EX(IDStage &ID, EXStage &EX, const EXStage &prevEX, const MEMStage &DM, const WBStage &WB);
+void process_EX(IDStage &ID, EXStage &EX, const MEMStage &DM, const WBStage &WB);
 void process_MEM(EXStage &EX, MEMStage &DM);
 void process_WB(MEMStage &DM, WBStage &WB);
 
@@ -179,6 +189,7 @@ int main(int argc, char **argv) {
 
     // Main simulation loop.
     for (int cycle = 1; cycle <= numCycles; cycle++) {
+
         // Process WB stage.
         process_WB(DM, WB);
         if (WB.InStr != -1 && WB.InStr < total_instructions && Output[4][WB.InStr] == -1)
@@ -195,15 +206,16 @@ int main(int argc, char **argv) {
         if (DM.InStr != -1 && DM.InStr < total_instructions && Output[3][DM.InStr] == -1)
             Output[3][DM.InStr] = cycle;
 
-        // Process EX stage.
-        {
-            // Save a copy of the old EX stage if needed for forwarding.
-            EXStage prevEX = EX;
-            process_EX(ID, EX, prevEX, DM, WB);
-        }
+        process_EX(ID, EX, DM, WB);
         if (EX.InStr != -1 && EX.InStr < total_instructions && Output[2][EX.InStr] == -1)
             Output[2][EX.InStr] = cycle;
-
+        
+        if (ID.Branch && RegFile[ID.RR1].value == RegFile[ID.RR2].value && !ID.stall) {
+            IF.PC = IF.PC + ID.Imm/4 - 2;  
+            cout << IF.PC << endl;
+            IF.InStr = -1;
+            ID.Branch = false;
+        }
         // Process ID stage.
         process_ID(IF, ID, instructions_hex);
         if (ID.InStr != -1 && ID.InStr < total_instructions && Output[1][ID.InStr] == -1)
@@ -255,7 +267,6 @@ int main(int argc, char **argv) {
 // If a stall is in effect, do not advance the PC.
 void process_IF(IFStage &IF, const vector<string> &instructions) {
     if (IF.stall) {
-        // Stall: do not fetch a new instruction.
         cout << "IF stage stalled; PC remains at " << IF.PC << endl;
         IF.stall = false; // Clear stall flag so that stall lasts one cycle.
         return;
@@ -289,9 +300,7 @@ void process_ID(IFStage &IF, IDStage &ID, const vector<string> &instructions) {
     
     // Get opcode from bits 25 to 31.
     string opcode = instr.substr(25, 7);
-
-    if (opcode == "0110011")
-    {
+    if (opcode == "0110011") {
         // ADD: opcode = 0110011, funct7 = 0000000, funct3 = 000
         if (instr.substr(0, 7) == "0000000" && instr.substr(17, 3) == "000")
         {
@@ -320,7 +329,7 @@ void process_ID(IFStage &IF, IDStage &ID, const vector<string> &instructions) {
         else if (instr.substr(0, 7) == "0000000" && instr.substr(17, 3) == "001")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
-            ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2); // shift amount in lower bits of rs2
+            ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);
             ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
             ID.RegWrite = true;  ID.RegDst = true;
             ID.Branch = false;   ID.Jump = false;
@@ -332,7 +341,7 @@ void process_ID(IFStage &IF, IDStage &ID, const vector<string> &instructions) {
         else if (instr.substr(0, 7) == "0000000" && instr.substr(17, 3) == "101")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
-            ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2); // shift amount
+            ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);
             ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
             ID.RegWrite = true;  ID.RegDst = true;
             ID.Branch = false;   ID.Jump = false;
@@ -344,7 +353,7 @@ void process_ID(IFStage &IF, IDStage &ID, const vector<string> &instructions) {
         else if (instr.substr(0, 7) == "0100000" && instr.substr(17, 3) == "101")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
-            ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2); // shift amount
+            ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);
             ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
             ID.RegWrite = true;  ID.RegDst = true;
             ID.Branch = false;   ID.Jump = false;
@@ -376,7 +385,6 @@ void process_ID(IFStage &IF, IDStage &ID, const vector<string> &instructions) {
             ID.ALUSrc = false;   ID.ALUOp = 11; // SLTU
             ID.MemtoReg = false;
         }
-        // AND: opcode = 0110011, funct7 = 0000000, funct3 = 111
         else if (instr.substr(0, 7) == "0000000" && instr.substr(17, 3) == "111")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
@@ -413,7 +421,7 @@ void process_ID(IFStage &IF, IDStage &ID, const vector<string> &instructions) {
             ID.MemtoReg = false;
         }
     }
-    // I‑type instructions
+    // I-type instructions (non-load)
     else if (opcode == "0010011")
     {
         // ADDI: funct3 = "000"
@@ -421,8 +429,17 @@ void process_ID(IFStage &IF, IDStage &ID, const vector<string> &instructions) {
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
             ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
-            // For non‑shift I‑type instructions, immediate is from bits 0–11.
-            ID.Imm = stoi(instr.substr(0, 12), nullptr, 2);
+            
+            // Extract 12-bit immediate and sign-extend it
+            string imm_str = instr.substr(0, 12);
+            int sign_bit = imm_str[0] - '0';
+            int32_t imm_val = stoi(imm_str, nullptr, 2);
+            // Sign extend if the MSB is 1
+            if (sign_bit == 1) {
+                imm_val |= 0xFFFFF000; // Set the upper 20 bits to 1
+            }
+            ID.Imm = imm_val;
+            
             ID.RegWrite = true;  ID.RegDst = false;
             ID.Branch = false;   ID.Jump = false;
             ID.MemRead = false;  ID.MemWrite = false;
@@ -430,34 +447,42 @@ void process_ID(IFStage &IF, IDStage &ID, const vector<string> &instructions) {
             ID.MemtoReg = false;
         }
         // SLLI: Shift Left Logical Immediate, funct3 = "001"
-        else if (instr.substr(17, 3) == "001")
+        else if (instr.substr(17, 3) == "001" && instr.substr(0, 7) == "0000000")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
             ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
-            // For shift immediates, the shift amount comes from bits 20–24.
-            ID.Imm = stoi(instr.substr(20, 5), nullptr, 2);
+            // For shift immediates, the shift amount comes from bits 7-11 (shamt)
+            ID.Imm = stoi(instr.substr(7, 5), nullptr, 2);
             ID.RegWrite = true;  ID.RegDst = false;
             ID.Branch = false;   ID.Jump = false;
             ID.MemRead = false;  ID.MemWrite = false;
             ID.ALUSrc = true;    ID.ALUOp = 7;  // SLLI
             ID.MemtoReg = false;
         }
-        // SRLI / SRAI: Shift Right Logical/Arithmetic Immediate, funct3 = "101"
-        else if (instr.substr(17, 3) == "101")
+        // SRLI: Shift Right Logical Immediate, funct3 = "101", funct7 = "0000000"
+        else if (instr.substr(17, 3) == "101" && instr.substr(0, 7) == "0000000")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
             ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
-            // For shift immediates, shift amount is in bits 20–24.
-            ID.Imm = stoi(instr.substr(20, 5), nullptr, 2);
+            // Shift amount is in bits 7-11 (shamt)
+            ID.Imm = stoi(instr.substr(7, 5), nullptr, 2);
             ID.RegWrite = true;  ID.RegDst = false;
             ID.Branch = false;   ID.Jump = false;
             ID.MemRead = false;  ID.MemWrite = false;
-            ID.ALUSrc = true;
-            // Determine if this is SRLI or SRAI by checking the higher bits (bits 0–7)
-            if (instr.substr(0, 7) == "0000000")
-                ID.ALUOp = 8;  // SRLI
-            else if (instr.substr(0, 7) == "0100000")
-                ID.ALUOp = 9;  // SRAI
+            ID.ALUSrc = true;    ID.ALUOp = 8;  // SRLI
+            ID.MemtoReg = false;
+        }
+        // SRAI: Shift Right Arithmetic Immediate, funct3 = "101", funct7 = "0100000"
+        else if (instr.substr(17, 3) == "101" && instr.substr(0, 7) == "0100000")
+        {
+            ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
+            ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
+            // Shift amount is in bits 7-11 (shamt)
+            ID.Imm = stoi(instr.substr(7, 5), nullptr, 2);
+            ID.RegWrite = true;  ID.RegDst = false;
+            ID.Branch = false;   ID.Jump = false;
+            ID.MemRead = false;  ID.MemWrite = false;
+            ID.ALUSrc = true;    ID.ALUOp = 9;  // SRAI
             ID.MemtoReg = false;
         }
         // SLTI: Set Less Than Immediate (signed), funct3 = "010"
@@ -465,8 +490,16 @@ void process_ID(IFStage &IF, IDStage &ID, const vector<string> &instructions) {
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
             ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
-            // Immediate from bits 0–11.
-            ID.Imm = stoi(instr.substr(0, 12), nullptr, 2);
+            
+            // Extract and sign-extend the immediate
+            string imm_str = instr.substr(0, 12);
+            int sign_bit = imm_str[0] - '0';
+            int32_t imm_val = stoi(imm_str, nullptr, 2);
+            if (sign_bit == 1) {
+                imm_val |= 0xFFFFF000;
+            }
+            ID.Imm = imm_val;
+            
             ID.RegWrite = true;  ID.RegDst = false;
             ID.Branch = false;   ID.Jump = false;
             ID.MemRead = false;  ID.MemWrite = false;
@@ -478,7 +511,16 @@ void process_ID(IFStage &IF, IDStage &ID, const vector<string> &instructions) {
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
             ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
-            ID.Imm = stoi(instr.substr(0, 12), nullptr, 2);
+            
+            // Sign-extend the immediate (even for SLTIU, the immediate is sign-extended)
+            string imm_str = instr.substr(0, 12);
+            int sign_bit = imm_str[0] - '0';
+            int32_t imm_val = stoi(imm_str, nullptr, 2);
+            if (sign_bit == 1) {
+                imm_val |= 0xFFFFF000;
+            }
+            ID.Imm = imm_val;
+            
             ID.RegWrite = true;  ID.RegDst = false;
             ID.Branch = false;   ID.Jump = false;
             ID.MemRead = false;  ID.MemWrite = false;
@@ -490,7 +532,16 @@ void process_ID(IFStage &IF, IDStage &ID, const vector<string> &instructions) {
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
             ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
-            ID.Imm = stoi(instr.substr(0, 12), nullptr, 2);
+            
+            // Sign-extend the immediate
+            string imm_str = instr.substr(0, 12);
+            int sign_bit = imm_str[0] - '0';
+            int32_t imm_val = stoi(imm_str, nullptr, 2);
+            if (sign_bit == 1) {
+                imm_val |= 0xFFFFF000;
+            }
+            ID.Imm = imm_val;
+            
             ID.RegWrite = true;  ID.RegDst = false;
             ID.Branch = false;   ID.Jump = false;
             ID.MemRead = false;  ID.MemWrite = false;
@@ -502,7 +553,16 @@ void process_ID(IFStage &IF, IDStage &ID, const vector<string> &instructions) {
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
             ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
-            ID.Imm = stoi(instr.substr(0, 12), nullptr, 2);
+            
+            // Sign-extend the immediate
+            string imm_str = instr.substr(0, 12);
+            int sign_bit = imm_str[0] - '0';
+            int32_t imm_val = stoi(imm_str, nullptr, 2);
+            if (sign_bit == 1) {
+                imm_val |= 0xFFFFF000;
+            }
+            ID.Imm = imm_val;
+            
             ID.RegWrite = true;  ID.RegDst = false;
             ID.Branch = false;   ID.Jump = false;
             ID.MemRead = false;  ID.MemWrite = false;
@@ -514,7 +574,16 @@ void process_ID(IFStage &IF, IDStage &ID, const vector<string> &instructions) {
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
             ID.WR  = stoi(instr.substr(20, 5), nullptr, 2);
-            ID.Imm = stoi(instr.substr(0, 12), nullptr, 2);
+            
+            // Sign-extend the immediate
+            string imm_str = instr.substr(0, 12);
+            int sign_bit = imm_str[0] - '0';
+            int32_t imm_val = stoi(imm_str, nullptr, 2);
+            if (sign_bit == 1) {
+                imm_val |= 0xFFFFF000;
+            }
+            ID.Imm = imm_val;
+            
             ID.RegWrite = true;  ID.RegDst = false;
             ID.Branch = false;   ID.Jump = false;
             ID.MemRead = false;  ID.MemWrite = false;
@@ -522,49 +591,186 @@ void process_ID(IFStage &IF, IDStage &ID, const vector<string> &instructions) {
             ID.MemtoReg = false;
         }
     }
-    // I‑type load: LW
+    // I-type load instructions
     else if (opcode == "0000011")
     {
         ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2); // base register
         ID.WR  = stoi(instr.substr(20, 5), nullptr, 2); // destination register
-        ID.Imm = stoi(instr.substr(0, 12), nullptr, 2);
+        
+        // Sign-extend the immediate
+        string imm_str = instr.substr(0, 12);
+        int sign_bit = imm_str[0] - '0';
+        int32_t imm_val = stoi(imm_str, nullptr, 2);
+        if (sign_bit == 1) {
+            imm_val |= 0xFFFFF000;
+        }
+        ID.Imm = imm_val;
+        
         ID.RegWrite = true;  ID.RegDst = false;
         ID.Branch = false;   ID.Jump = false;
         ID.MemRead = true;   ID.MemWrite = false;
         ID.ALUSrc = true;    ID.ALUOp = 2;  // Address calculation uses addition
         ID.MemtoReg = true;
+        
+        // Different load types based on funct3
+        string funct3 = instr.substr(17, 3);
+        if (funct3 == "010") {          // LW: Load Word
+            ID.MemSize = 4;             // 4 bytes
+            ID.MemSignExtend = true;    // Not needed for word, but set for consistency
+        }
+        else if (funct3 == "001") {     // LH: Load Halfword
+            ID.MemSize = 2;             // 2 bytes
+            ID.MemSignExtend = true;    // Sign-extend
+        }
+        else if (funct3 == "101") {     // LHU: Load Halfword Unsigned
+            ID.MemSize = 2;             // 2 bytes
+            ID.MemSignExtend = false;   // Zero-extend
+        }
+        else if (funct3 == "000") {     // LB: Load Byte
+            ID.MemSize = 1;             // 1 byte
+            ID.MemSignExtend = true;    // Sign-extend
+        }
+        else if (funct3 == "100") {     // LBU: Load Byte Unsigned
+            ID.MemSize = 1;             // 1 byte
+            ID.MemSignExtend = false;   // Zero-extend
+        }
     }
-    // S‑type: Store Word (SW)
+    // S-type: Store instructions
     else if (opcode == "0100011")
     {
         ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2); // base register
         ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);  // source register
+        
+        // S-type immediate: imm[11:5] is in bits 0-6, imm[4:0] is in bits 20-24
         string imm_str = instr.substr(0, 7) + instr.substr(20, 5);
-        ID.Imm = stoi(imm_str, nullptr, 2);
+        int sign_bit = imm_str[0] - '0';
+        int32_t imm_val = stoi(imm_str, nullptr, 2);
+        if (sign_bit == 1) {
+            imm_val |= 0xFFFFF000; // Set the upper 20 bits to 1
+        }
+        ID.Imm = imm_val;
+        
         ID.RegWrite = false; ID.RegDst = false;
         ID.Branch = false;   ID.Jump = false;
         ID.MemRead = false;  ID.MemWrite = true;
         ID.ALUSrc = true;    ID.ALUOp = 2;  // Address calculation uses addition
+        
+        // Different store types based on funct3
+        string funct3 = instr.substr(17, 3);
+        if (funct3 == "010") {      // SW: Store Word
+            ID.MemSize = 4;         // 4 bytes
+        }
+        else if (funct3 == "001") { // SH: Store Halfword
+            ID.MemSize = 2;         // 2 bytes
+        }
+        else if (funct3 == "000") { // SB: Store Byte
+            ID.MemSize = 1;         // 1 byte
+        }
     }
-    // B‑type: Branch Equal (BEQ)
+    // B-type: Branch instructions
     else if (opcode == "1100011")
     {
-        if (instr.substr(17, 3) == "000")
-        {
-            ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
-            ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);
-            string imm_branch = "";
-            imm_branch += instr.substr(0, 1);    // imm[12]
-            imm_branch += instr.substr(1, 6);    // imm[10:5]
-            imm_branch += instr.substr(7, 1);    // imm[11]
-            imm_branch += instr.substr(20, 4);   // imm[4:1]
-            imm_branch += "0";                   // branch addresses are 2-byte aligned
-            ID.Imm = stoi(imm_branch, nullptr, 2);
-            ID.RegWrite = false; ID.RegDst = false;
-            ID.Branch = true;    ID.Jump = false;
-            ID.MemRead = false;  ID.MemWrite = false;
-            ID.ALUSrc = false;   ID.ALUOp = 3;  // Subtraction for comparison
+        ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2); // rs1
+        ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);  // rs2
+        
+        // B-type immediate format: imm[12|10:5|4:1|11]
+        // bit 0 is always 0 (half-word aligned addresses)
+        string imm_str = "";
+        imm_str += instr.substr(0, 1);    // imm[12]
+        imm_str += instr.substr(24, 1);   // imm[11] (stored at bit 24)
+        imm_str += instr.substr(1, 6);    // imm[10:5]
+        imm_str += instr.substr(20, 4);   // imm[4:1]
+        imm_str += "0";                   // imm[0] = 0
+        
+        // Sign-extend the immediate
+        int sign_bit = imm_str[0] - '0';
+        int32_t imm_val = stoi(imm_str, nullptr, 2);
+        if (sign_bit == 1) {
+            // Extend to the full 32 bits
+            imm_val |= 0xFFFFE000; // Set the upper 19 bits to 1
         }
+        ID.Imm = imm_val;
+        
+        ID.RegWrite = false; ID.RegDst = false;
+        ID.Branch = true;    ID.Jump = false;
+        ID.MemRead = false;  ID.MemWrite = false;
+        ID.ALUSrc = false;
+        
+        // Different branch types based on funct3
+        string funct3 = instr.substr(17, 3);
+        if (funct3 == "000") {      // BEQ: Branch if Equal
+            ID.ALUOp = 3;           // SUB for comparison
+            ID.BranchType = 0;      // BEQ
+        }
+        else if (funct3 == "001") { // BNE: Branch if Not Equal
+            ID.ALUOp = 3;           // SUB for comparison
+            ID.BranchType = 1;      // BNE
+        }
+        else if (funct3 == "100") { // BLT: Branch if Less Than
+            ID.ALUOp = 10;          // SLT for comparison
+            ID.BranchType = 2;      // BLT
+        }
+        else if (funct3 == "101") { // BGE: Branch if Greater or Equal
+            ID.ALUOp = 10;          // SLT for comparison
+            ID.BranchType = 3;      // BGE
+        }
+        else if (funct3 == "110") { // BLTU: Branch if Less Than (Unsigned)
+            ID.ALUOp = 11;          // SLTU for comparison
+            ID.BranchType = 4;      // BLTU
+        }
+        else if (funct3 == "111") { // BGEU: Branch if Greater or Equal (Unsigned)
+            ID.ALUOp = 11;          // SLTU for comparison
+            ID.BranchType = 5;      // BGEU
+        }
+    }
+    // J-type: JAL (Jump and Link)
+    else if (opcode == "1101111")
+    {
+        ID.WR = stoi(instr.substr(20, 5), nullptr, 2); // rd
+        
+        // J-type immediate format: imm[20|10:1|11|19:12]
+        string imm_str = "";
+        imm_str += instr.substr(0, 1);     // imm[20]
+        imm_str += instr.substr(12, 8);    // imm[19:12]
+        imm_str += instr.substr(11, 1);    // imm[11]
+        imm_str += instr.substr(1, 10);    // imm[10:1]
+        imm_str += "0";                    // imm[0] = 0
+        
+        // Sign-extend the immediate
+        int sign_bit = imm_str[0] - '0';
+        int32_t imm_val = stoi(imm_str, nullptr, 2);
+        if (sign_bit == 1) {
+            // Extend to the full 32 bits
+            imm_val |= 0xFFE00000; // Set the upper 11 bits to 1
+        }
+        ID.Imm = imm_val;
+        
+        ID.RegWrite = true;  ID.RegDst = false;
+        ID.Branch = false;   ID.Jump = true;
+        ID.MemRead = false;  ID.MemWrite = false;
+        ID.ALUSrc = false;   ID.ALUOp = 2;  // Addition for PC+4
+        ID.MemtoReg = false; ID.JumpAndLink = true;
+    }
+    // I-type: JALR (Jump and Link Register)
+    else if (opcode == "1100111" && instr.substr(17, 3) == "000")
+    {
+        ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2); // rs1
+        ID.WR  = stoi(instr.substr(20, 5), nullptr, 2); // rd
+        
+        // Extract and sign-extend the immediate
+        string imm_str = instr.substr(0, 12);
+        int sign_bit = imm_str[0] - '0';
+        int32_t imm_val = stoi(imm_str, nullptr, 2);
+        if (sign_bit == 1) {
+            imm_val |= 0xFFFFF000;
+        }
+        ID.Imm = imm_val;
+        
+        ID.RegWrite = true;  ID.RegDst = false;
+        ID.Branch = false;   ID.Jump = true;
+        ID.MemRead = false;  ID.MemWrite = false;
+        ID.ALUSrc = true;    ID.ALUOp = 2;  // Addition for base + offset
+        ID.MemtoReg = false; ID.JumpAndLink = true; ID.JumpReg = true;
     }
 }
 
@@ -572,7 +778,7 @@ void process_ID(IFStage &IF, IDStage &ID, const vector<string> &instructions) {
 // In addition to performing the ALU operation, we check for load–use hazards.
 // If a hazard is detected, we insert a bubble (by setting EX.InStr = –1) and
 // signal the IF and ID stages to stall.
-void process_EX(IDStage &ID, EXStage &EX, const EXStage &prevEX, const MEMStage &DM, const WBStage &WB) {
+void process_EX(IDStage &ID, EXStage &EX, const MEMStage &DM, const WBStage &WB) {
     // If no valid instruction, pass a bubble.
     if (ID.InStr == -1) {
         EX.InStr = -1;
@@ -587,16 +793,6 @@ void process_EX(IDStage &ID, EXStage &EX, const EXStage &prevEX, const MEMStage 
         }
     }
     
-    if (loadHazard) {
-        cout << "EX stage detected load-use hazard at instruction " << ID.InStr
-             << ". Inserting bubble." << endl;
-        // Insert a bubble by setting EX.InStr to -1.
-        EX.InStr = -1;
-        // Signal the ID stage to stall for one cycle.
-        ID.stall = true;
-        return;
-    }
-    
     // Normal propagation from ID to EX.
     EX.InStr = ID.InStr;
     EX.WriteReg = ID.WR;
@@ -608,7 +804,34 @@ void process_EX(IDStage &ID, EXStage &EX, const EXStage &prevEX, const MEMStage 
     EX.RegWrite = ID.RegWrite;
     EX.WriteData = ID.RD2;
     EX.WriteDataReg = ID.RR2;
-    
+    bool branchHazard = false;
+
+    if (ID.Branch) {
+        cout << ID.RR1 << " " << ID.RR2 << endl;
+        cout << EX.WriteReg << endl;
+        // Case 1: Hazard from EX stage (e.g., a load in EX)
+        if (EX.RegWrite && (EX.WriteReg == ID.RR1 || EX.WriteReg == ID.RR2)) {
+            branchHazard = true;
+            cout << "ID stage detected branch hazard from EX stage at instruction " 
+                << ID.InStr << ". Inserting bubble." << endl;
+        }
+        // Case 2: Hazard from DM stage (e.g., a load in DM)
+        else if (DM.RegWrite && (DM.WriteReg == ID.RR1 || DM.WriteReg == ID.RR2)) {
+            branchHazard = true;
+            cout << "ID stage detected branch hazard from DM stage at instruction " 
+                << ID.InStr << ". Inserting bubble." << endl;
+        }
+    }
+
+    if (loadHazard || branchHazard) {
+        cout << "EX stage detected load-use hazard at instruction " << ID.InStr
+             << ". Inserting bubble." << endl;
+        // Insert a bubble by setting EX.InStr to -1.
+        EX.InStr = -1;
+        // Signal the ID stage to stall for one cycle.
+        ID.stall = true;
+        return;
+    }
     int arg1 = ID.RD1;
     if (DM.RegWrite && DM.WriteReg == ID.RR1)
         arg1 = (DM.MemtoReg ? DM.Read_data : DM.ALU_res);
