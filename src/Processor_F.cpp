@@ -148,6 +148,7 @@ int main(int argc, char **argv)
                 break;
             }
 
+<<<<<<< Updated upstream
             // if (branch_taken)
             // {
             //     // Convert byte offset to instruction offset: assume PC increments by 1 per instruction.
@@ -157,6 +158,15 @@ int main(int argc, char **argv)
             //     IF.InStr = -1;     // Insert bubble in IF stage.
             //     ID.Branch = false; // Clear branch signal after taken.
             // }
+=======
+            if (branch_taken)
+            {
+                IF.PC = IF.PC + (ID.Imm / 4) - 1;
+                cout << "Branch taken, new PC: " << IF.PC << endl;
+                IF.InStr = -1; 
+                ID.Branch = false; 
+            }
+>>>>>>> Stashed changes
         }
 
         process_ID(instructions_hex);
