@@ -52,7 +52,7 @@ void process_EX();
 void process_MEM();
 void process_WB();
 
-IFStage IF = {0, false, -1};
+IFStage IF = {0, false, -1, false, 0};
 IDStage ID = {.RR1 = 0, .RR2 = 0, .WR = 0, .RD1 = 0, .RD2 = 0, .Imm = 0, .RegWrite = false, .RegDst = false, .Branch = false, .Jump = false, .MemRead = false, .MemWrite = false, .ALUSrc = false, .ALUOp = 0, .MemtoReg = false, .stall = false, .InStr = -1, .DM_stall_prev = 0};
 
 EXStage EX = {0, false, 0, 0, 0, false, false, false, false, false, false, -1, false};
@@ -157,15 +157,15 @@ int main(int argc, char **argv)
                 break;
             }
 
-            if (branch_taken)
-            {
-                // Convert byte offset to instruction offset: assume PC increments by 1 per instruction.
-                // ID.Imm is in bytes so divide by 4, then adjust offset as needed (-2 adjustment as in your design).
-                IF.PC = IF.PC + (ID.Imm / 4) - 2;
-                cout << "Branch taken, new PC: " << IF.PC << endl;
-                IF.InStr = -1;     // Insert bubble in IF stage.
-                ID.Branch = false; // Clear branch signal after taken.
-            }
+            // if (branch_taken)
+            // {
+            //     // Convert byte offset to instruction offset: assume PC increments by 1 per instruction.
+            //     // ID.Imm is in bytes so divide by 4, then adjust offset as needed (-2 adjustment as in your design).
+            //     IF.PC = IF.PC + (ID.Imm / 4) - 2;
+            //     cout << "Branch taken, new PC: " << IF.PC << endl;
+            //     IF.InStr = -1;     // Insert bubble in IF stage.
+            //     ID.Branch = false; // Clear branch signal after taken.
+            // }
         }
 
         process_ID(instructions_hex);
@@ -234,7 +234,7 @@ void process_IF(const vector<string> &instructions)
     if (IF.stall)
     {
         cout << "IF stage stalled; PC remains at " << IF.PC << endl;
-        IF.stall = false; 
+        IF.stall = false;
         return;
     }
     if (IF.PC < instructions.size())
@@ -255,11 +255,11 @@ void process_ID(const vector<string> &instructions)
         if (ID.DM_stall_prev == 1)
         {
             ID.DM_stall_prev = 2;
-            DM.stall = true;
+            ID.stall = true;
         }
         return;
     }
-    int DM_stall_prev = 0;
+    ID.DM_stall_prev = 0;
     if (IF.InStr == -1 || IF.InStr >= instructions.size())
     {
         ID.InStr = -1;

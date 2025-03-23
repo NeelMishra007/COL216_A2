@@ -5,7 +5,8 @@
         "ostream": "cpp",
         "iostream": "cpp",
         "*.tcc": "cpp",
-        "xstring": "cpp"
+        "xstring": "cpp",
+        "vector": "cpp"
     },
     "terminal.integrated.env.windows": {
         "PATH": "C:\\msys64\\mingw64\\bin;${env:PATH}"

@@ -4,7 +4,8 @@
 #include <cstdint>
 using namespace std;
 
-void Decoder(IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB, string opcode, string instr) {
+void Decoder(IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB, string opcode, string instr)
+{
     if (opcode == "0110011")
     {
         // ADD: opcode = 0110011, funct7 = 0000000, funct3 = 000
@@ -510,6 +511,7 @@ void Decoder(IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB, string opcode,
         int arg1, arg2;
         if (EX.RegWrite && (EX.WriteReg == ID.RR1 || EX.WriteReg == ID.RR2) && !EX.MemtoReg) // forward last ALU one stall
         {
+
             ALU_stall_prev = true;
             ID.stall = true;
             return;
@@ -531,7 +533,7 @@ void Decoder(IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB, string opcode,
             return;
         }
 
-        if (ALU_stall_prev)
+        if (ALU_stall_prev == 2)
         {
             arg1 = DM.ALU_res;
             ALU_stall_prev = false;
@@ -578,6 +580,34 @@ void Decoder(IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB, string opcode,
             ID.ALUOp = 11;     // SLTU for comparison
             ID.BranchType = 5; // BGEU
         }
+
+        if (ID.Branch && !ID.stall)
+        {
+
+            switch (ID.BranchType)
+            {
+            case 0: // BEQ: Branch if Equal
+                branch_taken = (RegFile[ID.RR1].value == RegFile[ID.RR2].value);
+                break;
+            case 1: // BNE: Branch if Not Equal
+                branch_taken = (RegFile[ID.RR1].value != RegFile[ID.RR2].value);
+                break;
+            case 2: // BLT: Branch if Less Than (signed)
+                branch_taken = (RegFile[ID.RR1].value < RegFile[ID.RR2].value);
+                break;
+            case 3: // BGE: Branch if Greater or Equal (signed)
+                branch_taken = (RegFile[ID.RR1].value >= RegFile[ID.RR2].value);
+                break;
+            case 4: // BLTU: Branch if Less Than (unsigned)
+                branch_taken = ((unsigned)RegFile[ID.RR1].value < (unsigned)RegFile[ID.RR2].value);
+                break;
+            case 5: // BGEU: Branch if Greater or Equal (unsigned)
+                branch_taken = ((unsigned)RegFile[ID.RR1].value >= (unsigned)RegFile[ID.RR2].value);
+                break;
+            default:
+                cout << "Unknown branch type encountered!" << endl;
+                break;
+            }
     }
     // J-type: JAL (Jump and Link)
     else if (opcode == "1101111")

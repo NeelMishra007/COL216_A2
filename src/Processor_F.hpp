@@ -5,6 +5,8 @@ struct IFStage {
     int PC;
     bool stall;
     int InStr;  // Holds the index of the instruction fetched; -1 means bubble
+    bool branchtaken;
+    int branchPC;
 };
 
 struct IDStage {

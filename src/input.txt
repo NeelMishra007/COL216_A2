@@ -1,4 +1,5 @@
-1  00208093   addi  x1, x1, 2     // Increment x1 by 2, ensuring x1 ≠ x2
-2  00208463   beq   x1, x2, 8     // Branch to PC+8 if x1 equals x2 (not taken here)
-3  00218193   addi  x3, x3, 2     // Increment x3 by 2
-4  00220213   addi  x4, x4, 2     // Increment x4 by 2
+1  00012083   lw    x1, 0(x2)      // Load word from address in x2 into x1
+2  00016103   lw    x2, 0(x3)      // Load word from address in x3 into x2
+3  00209463   bne   x1, x2, 8      // Branch if x1 is NOT equal to x2
+4  00218193   addi  x3, x3, 2      // Increment x3 by 2
+5  00220213   addi  x4, x4, 2      // Increment x4 by 2
