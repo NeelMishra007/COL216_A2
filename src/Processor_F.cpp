@@ -278,15 +278,6 @@ void process_EX()
         return;
     }
 
-    bool loadHazard = false;
-    if (DM.RegWrite && DM.MemtoReg)
-    {
-        if (DM.WriteReg == ID.RR1 || (!ID.ALUSrc && DM.WriteReg == ID.RR2))
-        {
-            loadHazard = true;
-        }
-    }
-
     EX.InStr = ID.InStr;
     EX.WriteReg = ID.WR;
     EX.Branch = ID.Branch;
@@ -297,16 +288,7 @@ void process_EX()
     EX.RegWrite = ID.RegWrite;
     EX.WriteData = ID.RD2;
     EX.WriteDataReg = ID.RR2;
-    bool branchHazard = false;
 
-    if (loadHazard || branchHazard)
-    {
-        cout << "EX stage detected load-use hazard at instruction " << ID.InStr
-             << ". Inserting bubble." << endl;
-        EX.InStr = -1;
-        ID.stall = true;
-        return;
-    }
     int arg1 = ID.RD1;
     if (DM.RegWrite && DM.WriteReg == ID.RR1)
         arg1 = (DM.MemtoReg ? DM.Read_data : DM.ALU_res);
