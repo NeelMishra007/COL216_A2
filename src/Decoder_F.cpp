@@ -508,10 +508,9 @@ void Decoder(IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB, string opcode,
         ID.ALUSrc = false;
         bool ALU_stall_prev = false;
         bool DM_stall_prev2 = false;
-        int arg1, arg2;
+        int arg1 = RegFile[ID.RR1].value, arg2 = RegFile[ID.RR2].value;
         if (EX.RegWrite && (EX.WriteReg == ID.RR1 || EX.WriteReg == ID.RR2) && !EX.MemtoReg) // forward last ALU one stall
         {
-
             ALU_stall_prev = true;
             ID.stall = true;
             return;
@@ -524,7 +523,10 @@ void Decoder(IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB, string opcode,
         }
         if (DM.RegWrite && (DM.WriteReg == ID.RR1 || DM.WriteReg == ID.RR2) && !DM.MemtoReg) // forward last to last instr ALU, no stall
         {
-            arg1 = DM.ALU_res;
+            if (DM.WriteReg == ID.RR1)
+                arg1 = DM.ALU_res;
+            else
+                arg2 = DM.ALU_res;
         }
         if (DM.RegWrite && (DM.WriteReg == ID.RR1 || DM.WriteReg == ID.RR2) && DM.MemtoReg) // forward last to last DM, one stall
         {
@@ -534,19 +536,28 @@ void Decoder(IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB, string opcode,
             return;
         }
 
-        if (ALU_stall_prev == 2)
+        if (ALU_stall_prev)
         {
-            arg1 = DM.ALU_res;
+            if (DM.WriteReg == ID.RR1)
+                arg1 = DM.ALU_res;
+            else
+                arg2 = DM.ALU_res;
             ALU_stall_prev = false;
         }
         if (DM_stall_prev2)
         {
-            arg1 = WB.Read_data;
+            if (DM.WriteReg == ID.RR1)
+                arg1 = WB.Read_data;
+            else
+                arg2 = WB.Read_data;
             DM_stall_prev2 = false;
         }
         if (ID.DM_stall_prev == 2)
         {
-            arg1 = WB.Read_data;
+            if (WB.WriteReg == ID.RR1)
+                arg1 = WB.Read_data;
+            else
+                arg2 = WB.Read_data;
             ID.DM_stall_prev = 0;
         }
         // Different branch types based on funct3
@@ -582,94 +593,92 @@ void Decoder(IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB, string opcode,
             ID.BranchType = 5; // BGEU
         }
 
-        if (ID.Branch && !ID.stall)
-        {
-
-            switch (ID.BranchType)
+        switch (ID.BranchType)
             {
             case 0: // BEQ: Branch if Equal
-                branch_taken = (RegFile[ID.RR1].value == RegFile[ID.RR2].value);
+                IF.branch= (arg1 == arg2);
                 break;
             case 1: // BNE: Branch if Not Equal
-                branch_taken = (RegFile[ID.RR1].value != RegFile[ID.RR2].value);
+                IF.branch= (arg1 != arg2);
                 break;
             case 2: // BLT: Branch if Less Than (signed)
-                branch_taken = (RegFile[ID.RR1].value < RegFile[ID.RR2].value);
+                IF.branch = (arg1 < arg2);
                 break;
             case 3: // BGE: Branch if Greater or Equal (signed)
-                branch_taken = (RegFile[ID.RR1].value >= RegFile[ID.RR2].value);
+                IF.branch = (arg1 >= arg2);
                 break;
             case 4: // BLTU: Branch if Less Than (unsigned)
-                branch_taken = ((unsigned)RegFile[ID.RR1].value < (unsigned)RegFile[ID.RR2].value);
+                IF.branch = ((unsigned)arg1 < (unsigned)arg2);
                 break;
             case 5: // BGEU: Branch if Greater or Equal (unsigned)
-                branch_taken = ((unsigned)RegFile[ID.RR1].value >= (unsigned)RegFile[ID.RR2].value);
+                IF.branch= ((unsigned)arg1 >= (unsigned)arg2);
                 break;
             default:
                 cout << "Unknown branch type encountered!" << endl;
                 break;
             }
+        IF.branchPC = IF.PC + (ID.Imm / 4);
     }
-    // J-type: JAL (Jump and Link)
-    else if (opcode == "1101111")
-    {
-        ID.WR = stoi(instr.substr(20, 5), nullptr, 2); // rd
-
-        // J-type immediate format: imm[20|10:1|11|19:12]
-        string imm_str = "";
-        imm_str += instr.substr(0, 1);  // imm[20]
-        imm_str += instr.substr(12, 8); // imm[19:12]
-        imm_str += instr.substr(11, 1); // imm[11]
-        imm_str += instr.substr(1, 10); // imm[10:1]
-        imm_str += "0";                 // imm[0] = 0
-
-        // Sign-extend the immediate
-        int sign_bit = imm_str[0] - '0';
-        int32_t imm_val = stoi(imm_str, nullptr, 2);
-        if (sign_bit == 1)
+        // J-type: JAL (Jump and Link)
+        else if (opcode == "1101111")
         {
-            // Extend to the full 32 bits
-            imm_val |= 0xFFE00000; // Set the upper 11 bits to 1
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2); // rd
+
+            // J-type immediate format: imm[20|10:1|11|19:12]
+            string imm_str = "";
+            imm_str += instr.substr(0, 1);  // imm[20]
+            imm_str += instr.substr(12, 8); // imm[19:12]
+            imm_str += instr.substr(11, 1); // imm[11]
+            imm_str += instr.substr(1, 10); // imm[10:1]
+            imm_str += "0";                 // imm[0] = 0
+
+            // Sign-extend the immediate
+            int sign_bit = imm_str[0] - '0';
+            int32_t imm_val = stoi(imm_str, nullptr, 2);
+            if (sign_bit == 1)
+            {
+                // Extend to the full 32 bits
+                imm_val |= 0xFFE00000; // Set the upper 11 bits to 1
+            }
+            ID.Imm = imm_val;
+
+            ID.RegWrite = true;
+            ID.RegDst = false;
+            ID.Branch = false;
+            ID.Jump = true;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = false;
+            ID.ALUOp = 2; // Addition for PC+4
+            ID.MemtoReg = false;
+            ID.JumpAndLink = true;
         }
-        ID.Imm = imm_val;
-
-        ID.RegWrite = true;
-        ID.RegDst = false;
-        ID.Branch = false;
-        ID.Jump = true;
-        ID.MemRead = false;
-        ID.MemWrite = false;
-        ID.ALUSrc = false;
-        ID.ALUOp = 2; // Addition for PC+4
-        ID.MemtoReg = false;
-        ID.JumpAndLink = true;
-    }
-    // I-type: JALR (Jump and Link Register)
-    else if (opcode == "1100111" && instr.substr(17, 3) == "000")
-    {
-        ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2); // rs1
-        ID.WR = stoi(instr.substr(20, 5), nullptr, 2);  // rd
-
-        // Extract and sign-extend the immediate
-        string imm_str = instr.substr(0, 12);
-        int sign_bit = imm_str[0] - '0';
-        int32_t imm_val = stoi(imm_str, nullptr, 2);
-        if (sign_bit == 1)
+        // I-type: JALR (Jump and Link Register)
+        else if (opcode == "1100111" && instr.substr(17, 3) == "000")
         {
-            imm_val |= 0xFFFFF000;
-        }
-        ID.Imm = imm_val;
+            ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2); // rs1
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);  // rd
 
-        ID.RegWrite = true;
-        ID.RegDst = false;
-        ID.Branch = false;
-        ID.Jump = true;
-        ID.MemRead = false;
-        ID.MemWrite = false;
-        ID.ALUSrc = true;
-        ID.ALUOp = 2; // Addition for base + offset
-        ID.MemtoReg = false;
-        ID.JumpAndLink = true;
-        ID.JumpReg = true;
+            // Extract and sign-extend the immediate
+            string imm_str = instr.substr(0, 12);
+            int sign_bit = imm_str[0] - '0';
+            int32_t imm_val = stoi(imm_str, nullptr, 2);
+            if (sign_bit == 1)
+            {
+                imm_val |= 0xFFFFF000;
+            }
+            ID.Imm = imm_val;
+
+            ID.RegWrite = true;
+            ID.RegDst = false;
+            ID.Branch = false;
+            ID.Jump = true;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = true;
+            ID.ALUOp = 2; // Addition for base + offset
+            ID.MemtoReg = false;
+            ID.JumpAndLink = true;
+            ID.JumpReg = true;
+        }
     }
-}
