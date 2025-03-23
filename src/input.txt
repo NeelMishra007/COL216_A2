@@ -1,4 +1,14 @@
-1  00208093   addi  x1, x1, 2     // Increment x1 by 2, ensuring x1 ≠ x2
-2  00208463   beq   x1, x2, 8     // Branch to PC+8 if x1 equals x2 (not taken here)
-3  00218193   addi  x3, x3, 2     // Increment x3 by 2
-4  00220213   addi  x4, x4, 2     // Increment x4 by 2
+1  00208093   addi  x1, x1, 2     // Increment x1 by 2  
+2  002082B3   add   x1, x1, x2    // x1 = x1 + x2 (RAW hazard on x1)  
+
+3  00410113   addi  x2, x2, 4     // Increment x2 by 4  
+4  00012203   lw    x4, 0(x2)     // Load word from address in x2 to x4  
+
+5  008202A3   sw    x8, 4(x4)     // Store x8 at address x4 + 4  
+6  00220433   add   x8, x4, x2    // x8 = x4 + x2 (RAW hazard on x4 from lw)  
+
+7  00040413   addi  x8, x8, 0     // x8 = x8 + 0 (dependency on previous add)  
+8  00042603   lw    x12, 0(x8)    // Load word from x8 (dependency on x8)  
+
+9  00460613   addi  x12, x12, 4   // Increment x12 by 4 (RAW hazard on x12)  
+10 00C60833   add   x16, x12, x12 // x16 = x12 + x12 (RAW hazard on x12)  

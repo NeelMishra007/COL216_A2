@@ -1,10 +1,10 @@
-#include "Processor_F.hpp"
+#include "Processor.hpp"
 #include <string>
 #include <iostream>
 #include <cstdint>
 using namespace std;
 
-void Decoder(IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB, string opcode, string instr) {
+void Decoder_F(IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB, string opcode, string instr) {
     if (opcode == "0110011")
     {
         // ADD: opcode = 0110011, funct7 = 0000000, funct3 = 000
@@ -510,6 +510,7 @@ void Decoder(IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB, string opcode,
         int arg1, arg2;
         if (EX.RegWrite && (EX.WriteReg == ID.RR1 || EX.WriteReg == ID.RR2) && !EX.MemtoReg) // forward last ALU one stall
         {
+
             ALU_stall_prev = true;
             ID.stall = true;
             return;
@@ -520,12 +521,13 @@ void Decoder(IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB, string opcode,
             ID.stall = true;
             return;
         }
-        if (DM.RegWrite && (DM.WriteReg == ID.RR1 || DM.WriteReg == ID.RR2) && !DM.MemtoReg) // forward last to last instr ALU, no stal
+        if (DM.RegWrite && (DM.WriteReg == ID.RR1 || DM.WriteReg == ID.RR2) && !DM.MemtoReg) // forward last to last instr ALU, no stall
         {
             arg1 = DM.ALU_res;
         }
         if (DM.RegWrite && (DM.WriteReg == ID.RR1 || DM.WriteReg == ID.RR2) && DM.MemtoReg) // forward last to last DM, one stall
         {
+            cout << "yes" << endl;
             DM_stall_prev2 = true;
             ID.stall = true;
             return;

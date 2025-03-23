@@ -6,8 +6,8 @@
 #include <bitset>
 #include <cstdlib>
 #include <cstdint>
-#include "Decoder.hpp"
-#include "Processor_F.hpp"
+#include "Decoder_F.hpp"
+#include "Processor.hpp"
 
 using namespace std;
 
@@ -21,7 +21,6 @@ typedef struct
 
 Register RegFile[32];
 
-// Convert hex string to binary string
 string hexToBin(const string &hex)
 {
     string binary;
@@ -33,7 +32,6 @@ string hexToBin(const string &hex)
     return binary;
 }
 
-// Split a line by whitespace.
 vector<string> splitLine(const string &line)
 {
     vector<string> words;
@@ -98,28 +96,21 @@ int main(int argc, char **argv)
     int total_instructions = instructions_hex.size();
     int numCycles = atoi(argv[2]);
 
-    // Initialize pipeline registers.
-
-    // For recording which cycle each instruction appears in which stage.
     vector<vector<int>> Output(5, vector<int>(total_instructions, -1));
 
-    // Main simulation loop.
     for (int cycle = 1; cycle <= numCycles; cycle++)
     {
 
-        // Process WB stage.
         process_WB();
         if (WB.InStr != -1 && WB.InStr < total_instructions && Output[4][WB.InStr] == -1)
             Output[4][WB.InStr] = cycle;
 
-        // Terminate when the last instruction completes WB.
         if (WB.InStr == total_instructions - 1)
         {
             cout << "Pipeline completed at cycle " << cycle << endl;
             break;
         }
 
-        // Process MEM stage.
         process_MEM();
         if (DM.InStr != -1 && DM.InStr < total_instructions && Output[3][DM.InStr] == -1)
             Output[3][DM.InStr] = cycle;
@@ -159,12 +150,10 @@ int main(int argc, char **argv)
 
             if (branch_taken)
             {
-                // Convert byte offset to instruction offset: assume PC increments by 1 per instruction.
-                // ID.Imm is in bytes so divide by 4, then adjust offset as needed (-2 adjustment as in your design).
                 IF.PC = IF.PC + (ID.Imm / 4) - 2;
                 cout << "Branch taken, new PC: " << IF.PC << endl;
-                IF.InStr = -1;     // Insert bubble in IF stage.
-                ID.Branch = false; // Clear branch signal after taken.
+                IF.InStr = -1; 
+                ID.Branch = false; 
             }
         }
 
@@ -249,8 +238,7 @@ void process_ID(const vector<string> &instructions)
     if (ID.stall)
     {
         cout << "ID stage stalled; holding instruction " << ID.InStr << endl;
-        // Do not update; ID previous decode.
-        ID.stall = false; // Clear stall for next cycle.
+        ID.stall = false;
         IF.stall = true;
         if (ID.DM_stall_prev == 1)
         {
@@ -272,7 +260,7 @@ void process_ID(const vector<string> &instructions)
 
     string opcode = instr.substr(25, 7);
 
-    Decoder(ID, EX, DM, WB, opcode, instr);
+    Decoder_F(ID, EX, DM, WB, opcode, instr);
 }
 
 void process_EX()
@@ -299,7 +287,6 @@ void process_EX()
         }
     }
 
-    // Normal propagation from ID to EX.
     EX.InStr = ID.InStr;
     EX.WriteReg = ID.WR;
     EX.Branch = ID.Branch;
@@ -312,33 +299,11 @@ void process_EX()
     EX.WriteDataReg = ID.RR2;
     bool branchHazard = false;
 
-    // if (ID.Branch)
-    // {
-    //     cout << ID.RR1 << " " << ID.RR2 << endl;
-    //     cout << EX.WriteReg << endl;
-    //     // Case 1: Hazard from EX stage (e.g., a load in EX)
-    //     if (EX.RegWrite && (EX.WriteReg == ID.RR1 || EX.WriteReg == ID.RR2))
-    //     {
-    //         branchHazard = true;
-    //         cout << "ID stage detected branch hazard from EX stage at instruction "
-    //              << ID.InStr << ". Inserting bubble." << endl;
-    //     }
-    //     // Case 2: Hazard from DM stage (e.g., a load in DM)
-    //     else if (DM.RegWrite && (DM.WriteReg == ID.RR1 || DM.WriteReg == ID.RR2))
-    //     {
-    //         branchHazard = true;
-    //         cout << "ID stage detected branch hazard from DM stage at instruction "
-    //              << ID.InStr << ". Inserting bubble." << endl;
-    //     }
-    // }
-
     if (loadHazard || branchHazard)
     {
         cout << "EX stage detected load-use hazard at instruction " << ID.InStr
              << ". Inserting bubble." << endl;
-        // Insert a bubble by setting EX.InStr to -1.
         EX.InStr = -1;
-        // Signal the ID stage to stall for one cycle.
         ID.stall = true;
         return;
     }
@@ -402,6 +367,7 @@ void process_MEM()
     DM.MemtoReg = EX.MemtoReg;
     DM.RegWrite = EX.RegWrite;
     DM.Address = EX.ALU_res;
+    cout << DM.RegWrite << " " << DM.WriteReg << " " << DM.MemtoReg << endl;
 
     if (DM.MemRead)
     {
