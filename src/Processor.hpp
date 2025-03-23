@@ -1,5 +1,5 @@
-#ifndef PROCESSOR_F_HPP
-#define PROCESSOR_F_HPP
+#ifndef PROCESSOR_HPP
+#define PROCESSOR_HPP
 
 struct IFStage {
     int PC;
@@ -91,4 +91,4 @@ struct WBStage {
     bool stall;
 };
 
-#endif /
+#endif

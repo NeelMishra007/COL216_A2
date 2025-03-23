@@ -1,4 +1,4 @@
-#include "Processor_F.hpp"
+#include "Processor.hpp"
 #include <string>
 #include <iostream>
 #include <cstdint>
@@ -522,12 +522,13 @@ void Decoder(IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB, string opcode,
             ID.stall = true;
             return;
         }
-        if (DM.RegWrite && (DM.WriteReg == ID.RR1 || DM.WriteReg == ID.RR2) && !DM.MemtoReg) // forward last to last instr ALU, no stal
+        if (DM.RegWrite && (DM.WriteReg == ID.RR1 || DM.WriteReg == ID.RR2) && !DM.MemtoReg) // forward last to last instr ALU, no stall
         {
             arg1 = DM.ALU_res;
         }
         if (DM.RegWrite && (DM.WriteReg == ID.RR1 || DM.WriteReg == ID.RR2) && DM.MemtoReg) // forward last to last DM, one stall
         {
+            cout << "yes" << endl;
             DM_stall_prev2 = true;
             ID.stall = true;
             return;
