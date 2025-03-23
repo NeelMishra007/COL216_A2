@@ -487,7 +487,7 @@ void Decoder(IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB, string opcode,
         imm_str += instr.substr(24, 1); // imm[11] (stored at bit 24)
         imm_str += instr.substr(1, 6);  // imm[10:5]
         imm_str += instr.substr(20, 4); // imm[4:1]
-        imm_str += "0";                 // imm[0] = 0
+        // imm_str += "0";                 // imm[0] = 0
 
         // Sign-extend the immediate
         int sign_bit = imm_str[0] - '0';
@@ -530,7 +530,6 @@ void Decoder(IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB, string opcode,
         }
         if (DM.RegWrite && (DM.WriteReg == ID.RR1 || DM.WriteReg == ID.RR2) && DM.MemtoReg) // forward last to last DM, one stall
         {
-            cout << "yes" << endl;
             DM_stall_prev2 = true;
             ID.stall = true;
             return;
@@ -560,7 +559,6 @@ void Decoder(IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB, string opcode,
                 arg2 = WB.Read_data;
             ID.DM_stall_prev = 0;
         }
-        // Different branch types based on funct3
         string funct3 = instr.substr(17, 3);
         if (funct3 == "000")
         {                      // BEQ: Branch if Equal
@@ -619,8 +617,22 @@ void Decoder(IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB, string opcode,
             }
         IF.branchPC = IF.PC + (ID.Imm / 4);
     }
-        // J-type: JAL (Jump and Link)
-        else if (opcode == "1101111")
+    // J-type: JAL (Jump and Link)
+    else if (opcode == "1101111")
+    {
+        ID.WR = stoi(instr.substr(20, 5), nullptr, 2); // rd
+
+        string imm_str = "";
+        imm_str += instr.substr(0, 1);  // imm[20]
+        imm_str += instr.substr(12, 8); // imm[19:12]
+        imm_str += instr.substr(11, 1); // imm[11]
+        imm_str += instr.substr(1, 10); // imm[10:1]
+        // imm_str += "0";                 // imm[0] = 0
+
+        // Sign-extend the immediate
+        int sign_bit = imm_str[0] - '0';
+        int32_t imm_val = stoi(imm_str, nullptr, 2);
+        if (sign_bit == 1)
         {
             ID.WR = stoi(instr.substr(20, 5), nullptr, 2); // rd
 
