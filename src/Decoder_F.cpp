@@ -615,7 +615,7 @@ void Decoder_F(string opcode, string instr)
                 cout << "Unknown branch type encountered!" << endl;
                 break;
             }
-        IF.branchPC = IF.PC + (ID.Imm / 4);
+        if (IF.branch == 1) IF.branchPC = IF.PC + (ID.Imm / 4);
     }
     // J-type: JAL (Jump and Link)
     else if (opcode == "1101111")

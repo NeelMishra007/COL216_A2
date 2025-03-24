@@ -9,7 +9,6 @@
 #include "Decoder_F.hpp"
 #include "Processor.hpp"
 
-
 using namespace std;
 
 const int N = 2000005;
@@ -53,12 +52,12 @@ void process_WB();
 
 int main(int argc, char **argv)
 {
-    
-IF = {0, false, -1, 0, -1};
-ID = {.RR1 = 0, .RR2 = 0, .WR = 0, .RD1 = 0, .RD2 = 0, .Imm = 0, .RegWrite = false, .RegDst = false, .Branch = false, .Jump = false, .MemRead = false, .MemWrite = false, .ALUSrc = false, .ALUOp = 0, .MemtoReg = false, .stall = false, .InStr = -1, .DM_stall_prev = 0};
-EX = {0, false, 0, 0, 0, false, false, false, false, false, false, -1, false};
-DM = {0, 0, 0, false, false, false, false, 0, 0, -1, false};
-WB = {false, false, 0, 0, 0, -1, false};
+
+    IF = {0, false, -1, -1, -1};
+    ID = {.RR1 = 0, .RR2 = 0, .WR = 0, .RD1 = 0, .RD2 = 0, .Imm = 0, .RegWrite = false, .RegDst = false, .Branch = false, .Jump = false, .MemRead = false, .MemWrite = false, .ALUSrc = false, .ALUOp = 0, .MemtoReg = false, .stall = false, .InStr = -1, .DM_stall_prev = 0};
+    EX = {0, false, 0, 0, 0, false, false, false, false, false, false, -1, false};
+    DM = {0, 0, 0, false, false, false, false, 0, 0, -1, false};
+    WB = {false, false, 0, 0, 0, -1, false};
     if (argc < 3)
     {
         cerr << "Usage: " << argv[0] << " <input.txt> <num_cycles>" << endl;
@@ -148,15 +147,14 @@ WB = {false, false, 0, 0, 0, -1, false};
         //         break;
         //     }
 
-            // if (branch_taken)
-            // {
-            //     // Convert byte offset to instruction offset: assume PC increments by 1 per instruction.
-            //     // ID.Imm is in bytes so divide by 4, then adjust offset as needed (-2 adjustment as in your design).
-            //     IF.PC = IF.PC + (ID.Imm / 4) - 2;
-            //     cout << "Branch taken, new PC: " << IF.PC << endl;
-            //     IF.InStr = -1;     // Insert bubble in IF stage.
-            //     ID.Branch = false; // Clear branch signal after taken.
-
+        // if (branch_taken)
+        // {
+        //     // Convert byte offset to instruction offset: assume PC increments by 1 per instruction.
+        //     // ID.Imm is in bytes so divide by 4, then adjust offset as needed (-2 adjustment as in your design).
+        //     IF.PC = IF.PC + (ID.Imm / 4) - 2;
+        //     cout << "Branch taken, new PC: " << IF.PC << endl;
+        //     IF.InStr = -1;     // Insert bubble in IF stage.
+        //     ID.Branch = false; // Clear branch signal after taken.
 
         process_ID(instructions_hex);
         if (ID.InStr != -1 && ID.InStr < total_instructions && Output[1][ID.InStr] == -1)
@@ -231,21 +229,28 @@ void process_IF(const vector<string> &instructions)
         IF.InStr = IF.PC;
     else
         IF.InStr = -1;
-    if (IF.branch == 1) {
-        if (IF.branchPC == -1) IF.branch = 2;
-        else IF.branch = 3;
-    }
-    if (IF.branch == 2) {
-        IF.PC-=1;
+    if (IF.branch == 2)
+    {
+        IF.PC -= 1;
         IF.InStr = IF.PC;
-        IF.branch = 0;
+        IF.branch = -1;
     }
-    if (IF.branch == 3) {
+    if (IF.branch == 3)
+    {
         IF.PC = IF.branchPC;
         IF.InStr = IF.PC;
-        IF.branch = 0;
+        IF.branch = -1;
         IF.branchPC = -1;
     }
+    if (IF.branch == 0)
+    {
+        IF.branch = 2;
+    }
+    if (IF.branch == 1)
+    {
+        IF.branch = 3;
+    }
+
     IF.PC++;
 }
 
@@ -269,7 +274,8 @@ void process_ID(const vector<string> &instructions)
         ID.InStr = -1;
         return;
     }
-    if (IF.branch == 2 || IF.branch == 3){
+    if (IF.branch == 2 || IF.branch == 3)
+    {
         ID.InStr = -1;
         return;
     }
