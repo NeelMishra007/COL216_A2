@@ -43,7 +43,16 @@ vector<string> splitLine(const string &line)
     }
     return words;
 }
-
+string stageName(int stage) {
+    switch (stage) {
+        case 1: return "IF";
+        case 2: return "ID";
+        case 3: return "EX";
+        case 4: return "MEM";
+        case 5: return "WB";
+        default : return "-";
+    }
+}
 void process_IF(const vector<string> &instructions);
 void process_ID(const vector<string> &instructions);
 void process_EX();
@@ -52,7 +61,6 @@ void process_WB();
 
 int main(int argc, char **argv)
 {
-
     IF = {0, false, -1, -1, -1};
     ID = {.RR1 = 0, .RR2 = 0, .WR = 0, .RD1 = 0, .RD2 = 0, .Imm = 0, .RegWrite = false, .RegDst = false, .Branch = false, .Jump = false, .MemRead = false, .MemWrite = false, .ALUSrc = false, .ALUOp = 0, .MemtoReg = false, .stall = false, .InStr = -1, .DM_stall_prev = 0};
     EX = {0, false, 0, 0, 0, false, false, false, false, false, false, -1, false};
@@ -87,7 +95,19 @@ int main(int argc, char **argv)
         if (words.size() >= 3)
         {
             instructions_hex.push_back(words[1]);
-            instructions_print.push_back(words[2]);
+            string instruction;
+            for (size_t i = 2; i < words.size(); i++) {
+                // Stop concatenating if you hit a comment token.
+                if (!words[i].empty() && words[i][0] == '#') {
+                    break;
+                }
+                if (!instruction.empty()) {
+                    instruction += " ";
+                }
+                instruction += words[i];
+            }
+            instructions_print.push_back(instruction);
+            
         }
     }
     file.close();
@@ -95,95 +115,73 @@ int main(int argc, char **argv)
     int total_instructions = instructions_hex.size();
     int numCycles = atoi(argv[2]);
 
-    vector<vector<int>> Output(5, vector<int>(total_instructions, -1));
+    vector<vector<int>> Output(total_instructions, vector<int>(numCycles, -1));
 
-    for (int cycle = 1; cycle <= numCycles; cycle++)
+    for (int cycle = 0; cycle < numCycles; cycle++)
     {
 
         process_WB();
-        if (WB.InStr != -1 && WB.InStr < total_instructions && Output[4][WB.InStr] == -1)
-            Output[4][WB.InStr] = cycle;
+        if (WB.InStr != -1 && WB.InStr < total_instructions) {
+           Output[WB.InStr][cycle] = 5;
+        }
 
         if (WB.InStr == total_instructions - 1)
         {
-            cout << "Pipeline completed at cycle " << cycle << endl;
+            Output[WB.InStr][cycle] = 5;
+            //cout << "Pipeline completed at cycle " << cycle << endl;
             break;
         }
 
         process_MEM();
-        if (DM.InStr != -1 && DM.InStr < total_instructions && Output[3][DM.InStr] == -1)
-            Output[3][DM.InStr] = cycle;
+        if (DM.InStr != -1 && DM.InStr < total_instructions) {
+            Output[DM.InStr][cycle] = 4;
+        }
 
         process_EX();
-        if (EX.InStr != -1 && EX.InStr < total_instructions && Output[2][EX.InStr] == -1)
-            Output[2][EX.InStr] = cycle;
+        if (EX.InStr != -1 && EX.InStr < total_instructions) {
+            Output[EX.InStr][cycle] = 3;
+        }
 
         process_ID(instructions_hex);
-        if (ID.InStr != -1 && ID.InStr < total_instructions && Output[1][ID.InStr] == -1)
-            Output[1][ID.InStr] = cycle;
+        if (ID.InStr != -1 && ID.InStr < total_instructions) {
+            Output[ID.InStr][cycle] = 2;
+        }
 
-        // Process IF stage.
         process_IF(instructions_hex);
-        if (IF.InStr != -1 && IF.InStr < total_instructions && Output[0][IF.InStr] == -1)
-            Output[0][IF.InStr] = cycle;
+        if (IF.InStr != -1 && IF.InStr < total_instructions) {
+            Output[IF.InStr][cycle] = 1;
+        }
 
-        // (Optional) Debug print the stage instruction numbers.
-        cout << "Cycle " << cycle << ": IF:" << IF.InStr << " ID:" << ID.InStr
-             << " EX:" << EX.InStr << " MEM:" << DM.InStr << " WB:" << WB.InStr << endl;
+        //cout << "Cycle " << cycle << ": IF:" << IF.InStr << " ID:" << ID.InStr << " EX:" << EX.InStr << " MEM:" << DM.InStr << " WB:" << WB.InStr << endl;
     }
-
-    // Print pipeline timing table.
-    cout << "\nInstr\t";
-    for (int cycle = 1; cycle <= numCycles; cycle++)
-    {
-        cout << cycle << "\t";
-    }
-    cout << endl;
-
-    for (int i = 0; i < total_instructions; i++)
-    {
-        cout << instructions_print[i] << "\t";
-        for (int cycle = 1; cycle <= numCycles; cycle++)
-        {
-            bool printed = false;
-            for (int stage = 0; stage < 5; stage++)
-            {
-                if (Output[stage][i] == cycle)
-                {
-                    switch (stage)
-                    {
-                    case 0:
-                        cout << "IF\t";
-                        break;
-                    case 1:
-                        cout << "ID\t";
-                        break;
-                    case 2:
-                        cout << "EX\t";
-                        break;
-                    case 3:
-                        cout << "MEM\t";
-                        break;
-                    case 4:
-                        cout << "WB\t";
-                        break;
-                    }
-                    printed = true;
-                    break;
-                }
+    for (int i = 0; i < total_instructions; i++) {
+        cout << instructions_print[i];
+        int lastCycle = -1;
+        for (int cycle = 0; cycle < numCycles; cycle++) {
+            if (Output[i][cycle] != -1) {
+                lastCycle = cycle;
             }
-            if (!printed)
-                cout << "-\t";
+        }    
+        bool flag = true;
+        for (int cycle = 0; cycle <= lastCycle; cycle++) {
+            if (Output[i][cycle] == 5) flag = true;
+            else if (Output[i][cycle] != -1) flag = false;
+            
+            if (Output[i][cycle] == 5) {
+                cout << ";" << "WB";
+            }
+            else if (flag) cout << ";" << " ";
+            else if (Output[i][cycle] == -1 || Output[i][cycle] == Output[i][cycle - 1]) cout << ";" << "-";
+            else cout << ";" << stageName(Output[i][cycle]);
         }
         cout << endl;
     }
-    return 0;
 }
 void process_IF(const vector<string> &instructions)
 {
     if (IF.stall)
     {
-        cout << "IF stage stalled; PC remains at " << IF.PC << endl;
+        //cout << "IF stage stalled; PC remains at " << IF.PC << endl;
         IF.stall = false;
         return;
     }
@@ -203,7 +201,7 @@ void process_IF(const vector<string> &instructions)
         IF.InStr = IF.PC;
         IF.branch = -1;
         IF.branchPC = -1;
-        cout << IF.PC << endl;
+        //cout << IF.PC << endl;
     }
     if (IF.branch == 0)
     {
@@ -221,7 +219,7 @@ void process_ID(const vector<string> &instructions)
 {
     if (ID.stall)
     {
-        cout << "ID stage stalled; holding instruction " << ID.InStr << endl;
+        //cout << "ID stage stalled; holding instruction " << ID.InStr << endl;
         ID.stall = false;
         IF.stall = true;
         return;
@@ -288,6 +286,9 @@ void process_EX()
     EX.WriteData = ID.RD2;
     EX.WriteDataReg = ID.RR2;
 
+    EX.MemSize = ID.MemSize;
+    EX.MemSignExtend = ID.MemSignExtend;
+
     // For store instructions, prepare the write data and check for forwarding.
     EX.WriteData = ID.RD2;
     EX.WriteDataReg = ID.RR2;
@@ -319,17 +320,35 @@ void process_EX()
 
     switch (ID.ALUOp)
     {
-    case 2:
+    case 2:  // ADD (also used for address calculation)
         EX.ALU_res = arg1 + arg2;
         break;
-    case 3:
+    case 3:  // SUB
         EX.ALU_res = arg1 - arg2;
         break;
-    case 4:
+    case 4:  // AND
         EX.ALU_res = arg1 & arg2;
         break;
-    case 5:
+    case 5:  // OR
         EX.ALU_res = arg1 | arg2;
+        break;
+    case 6:  // XOR
+        EX.ALU_res = arg1 ^ arg2;
+        break;
+    case 7:  // SLL (Shift Left Logical)
+        EX.ALU_res = arg1 << arg2;
+        break;
+    case 8:  // SRL (Shift Right Logical)
+        EX.ALU_res = (unsigned int)arg1 >> arg2;
+        break;
+    case 9:  // SRA (Shift Right Arithmetic)
+        EX.ALU_res = arg1 >> arg2;
+        break;
+    case 10: // SLT (Set Less Than, signed)
+        EX.ALU_res = (arg1 < arg2) ? 1 : 0;
+        break;
+    case 11: // SLTU (Set Less Than Unsigned)
+        EX.ALU_res = ((unsigned int)arg1 < (unsigned int)arg2) ? 1 : 0;
         break;
     default:
         EX.ALU_res = arg1 + arg2;
@@ -352,6 +371,7 @@ void process_MEM()
 
         return;
     }
+    
     // Normal propagation when there is a valid instruction.
     DM.InStr = EX.InStr;
     DM.ALU_res = EX.ALU_res;
@@ -362,32 +382,93 @@ void process_MEM()
     DM.MemtoReg = EX.MemtoReg;
     DM.RegWrite = EX.RegWrite;
     DM.Address = EX.ALU_res;
-    // cout << DM.RegWrite << " " << DM.WriteReg << " " << DM.MemtoReg << endl;
+    
+    // Additional memory size and sign extend information
+    DM.MemSize = EX.MemSize;
+    DM.MemSignExtend = EX.MemSignExtend;
 
     if (DM.MemRead)
     {
-        DM.Read_data = MEM[DM.Address];
+        // Load operations with different memory sizes and sign extension
+        switch (DM.MemSize)
+        {
+        case 1: // Byte
+        {
+            uint8_t byte_val = MEM[DM.Address];
+            if (DM.MemSignExtend)
+                DM.Read_data = (int8_t)byte_val; // Sign extend
+            else
+                DM.Read_data = byte_val; // Zero extend
+            break;
+        }
+        case 2: // Halfword
+        {
+            uint16_t halfword_val = *((uint16_t*)&MEM[DM.Address]);
+            if (DM.MemSignExtend)
+                DM.Read_data = (int16_t)halfword_val; // Sign extend
+            else
+                DM.Read_data = halfword_val; // Zero extend
+            break;
+        }
+        case 4: // Word
+            DM.Read_data = *((int32_t*)&MEM[DM.Address]);
+            break;
+        }
     }
     else if (DM.MemWrite == true)
     {
+        // Restore the original forwarding logic for store instructions
         if (WB.RegWrite == true && WB.WriteReg == EX.WriteDataReg)
         { // previous instruction
             if (WB.MemtoReg == true)
             {
-                MEM[DM.Address] = WB.Read_data;
+                switch (DM.MemSize)
+                {
+                case 1: // Store Byte
+                    MEM[DM.Address] = WB.Read_data & 0xFF;
+                    break;
+                case 2: // Store Halfword
+                    *((uint16_t*)&MEM[DM.Address]) = WB.Read_data & 0xFFFF;
+                    break;
+                case 4: // Store Word
+                    *((int32_t*)&MEM[DM.Address]) = WB.Read_data;
+                    break;
+                }
             }
             else
             {
-                MEM[DM.Address] = WB.ALU_res;
+                switch (DM.MemSize)
+                {
+                case 1: // Store Byte
+                    MEM[DM.Address] = WB.ALU_res & 0xFF;
+                    break;
+                case 2: // Store Halfword
+                    *((uint16_t*)&MEM[DM.Address]) = WB.ALU_res & 0xFFFF;
+                    break;
+                case 4: // Store Word
+                    *((int32_t*)&MEM[DM.Address]) = WB.ALU_res;
+                    break;
+                }
             }
         }
         else
         {
-            MEM[DM.Address] = DM.Write_data;
+            // Original store logic
+            switch (DM.MemSize)
+            {
+            case 1: // Store Byte
+                MEM[DM.Address] = DM.Write_data & 0xFF;
+                break;
+            case 2: // Store Halfword
+                *((uint16_t*)&MEM[DM.Address]) = DM.Write_data & 0xFFFF;
+                break;
+            case 4: // Store Word
+                *((int32_t*)&MEM[DM.Address]) = DM.Write_data;
+                break;
+            }
         }
     }
 }
-
 void process_WB()
 {
     if (DM.InStr == -1)
@@ -410,6 +491,6 @@ void process_WB()
     if (WB.RegWrite)
     {
         RegFile[WB.WriteReg].value = (WB.MemtoReg ? WB.Read_data : WB.ALU_res);
-        cout << WB.WriteReg << " " << RegFile[WB.WriteReg].value << endl;
+        //cout << WB.WriteReg << " " << RegFile[WB.WriteReg].value << endl;
     }
 }

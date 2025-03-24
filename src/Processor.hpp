@@ -69,6 +69,8 @@ struct EXStage
     bool MemWrite;
     bool MemtoReg;
     bool RegWrite;
+    int MemSize;        // Size of memory access (1, 2, or 4 bytes)
+    bool MemSignExtend; // Whether to sign-extend memory reads
 
     int InStr;
 
@@ -87,6 +89,8 @@ struct MEMStage
     bool RegWrite;
     int ALU_res;
     int WriteReg;
+    int MemSize;        // Size of memory access (1, 2, or 4 bytes)
+    bool MemSignExtend; // Whether to sign-extend memory reads
 
     int InStr;
 

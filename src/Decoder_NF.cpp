@@ -402,6 +402,7 @@ void Decoder_NF(IFStage &IF, IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB
         ID.ALUSrc = true;
         ID.ALUOp = 2; // Address calculation uses addition
         ID.MemtoReg = true;
+        int arg1 = RegFile[ID.RR1].value, arg2 = RegFile[ID.RR2].value;
 
         string funct3 = instr.substr(17, 3);
         if (funct3 == "010")
@@ -499,7 +500,7 @@ void Decoder_NF(IFStage &IF, IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB
         ID.ALUSrc = false;
         bool ALU_stall_prev = false;
         bool DM_stall_prev2 = false;
-
+        int arg1 = RegFile[ID.RR1].value, arg2 = RegFile[ID.RR2].value;
         // Different branch types based on funct3
         string funct3 = instr.substr(17, 3);
         if (funct3 == "000")
@@ -532,63 +533,123 @@ void Decoder_NF(IFStage &IF, IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB
             ID.ALUOp = 11;     // SLTU for comparison
             ID.BranchType = 5; // BGEU
         }
-    }
-    // J-type: JAL (Jump and Link)
-    else if (opcode == "1101111")
-    {
-        ID.WR = stoi(instr.substr(20, 5), nullptr, 2); 
-
-        string imm_str = "";
-        imm_str += instr.substr(0, 1);
-        imm_str += instr.substr(12, 8); 
-        imm_str += instr.substr(11, 1); 
-        imm_str += instr.substr(1, 10); 
-        imm_str += "0";                 
-
-        int sign_bit = imm_str[0] - '0';
-        int32_t imm_val = stoi(imm_str, nullptr, 2);
-        if (sign_bit == 1)
-        {
-            imm_val |= 0xFFE00000; 
+        if (funct3 == "000")
+        {                      // BEQ: Branch if Equal
+            ID.ALUOp = 3;      // SUB for comparison
+            ID.BranchType = 0; // BEQ
         }
-        ID.Imm = imm_val;
+        else if (funct3 == "001")
+        {                      // BNE: Branch if Not Equal
+            ID.ALUOp = 3;      // SUB for comparison
+            ID.BranchType = 1; // BNE
+        }
+        else if (funct3 == "100")
+        {                      // BLT: Branch if Less Than
+            ID.ALUOp = 10;     // SLT for comparison
+            ID.BranchType = 2; // BLT
+        }
+        else if (funct3 == "101")
+        {                      // BGE: Branch if Greater or Equal
+            ID.ALUOp = 10;     // SLT for comparison
+            ID.BranchType = 3; // BGE
+        }
+        else if (funct3 == "110")
+        {                      // BLTU: Branch if Less Than (Unsigned)
+            ID.ALUOp = 11;     // SLTU for comparison
+            ID.BranchType = 4; // BLTU
+        }
+        else if (funct3 == "111")
+        {                      // BGEU: Branch if Greater or Equal (Unsigned)
+            ID.ALUOp = 11;     // SLTU for comparison
+            ID.BranchType = 5; // BGEU
+        }
+        if (EX.RegWrite && (ID.RR1 == EX.WriteReg || ID.RR2 == EX.WriteReg) || DM.RegWrite && (ID.RR1 == DM.WriteReg || ID.RR2 == DM.WriteReg)) {
+            ID.InStr = -1;
+            IF.stall = true;
+            return;
+        }
+        switch (ID.BranchType)
+        {
+        case 0: // BEQ: Branch if Equal
+            IF.branch = (arg1 == arg2);
+            break;
+        case 1: // BNE: Branch if Not Equal
+            IF.branch = (arg1 != arg2);
+            break;
+        case 2: // BLT: Branch if Less Than (signed)
+            IF.branch = (arg1 < arg2);
+            break;
+        case 3: // BGE: Branch if Greater or Equal (signed)
+            IF.branch = (arg1 >= arg2);
+            break;
+        case 4: // BLTU: Branch if Less Than (unsigned)
+            IF.branch = ((unsigned)arg1 < (unsigned)arg2);
+            break;
+        case 5: // BGEU: Branch if Greater or Equal (unsigned)
+            IF.branch = ((unsigned)arg1 >= (unsigned)arg2);
+            break;
+        default:
+            //cout << "Unknown branch type encountered!" << endl;
+            break;
+        }
+        if (IF.branch == 1)
+            IF.branchPC = IF.PC + (ID.Imm / 4) - 1;
+            //cout << "yes" << " " << IF.branchPC << endl;
+    }
+        else if (opcode == "1101111")
+    {
+        ID.WR = stoi(instr.substr(20, 5), nullptr, 2); // rd
+        string imm_str = instr.substr(0, 1) + instr.substr(12, 8) + instr.substr(11, 1) + instr.substr(1, 10);
+        int32_t imm_val = stoi(imm_str, nullptr, 2);
+        if (imm_str[0] == '1')
+        {
+            imm_val |= 0xFFE00000;
+        }
+        ID.Imm = imm_val << 1; // Shift left by 1 for JAL
+        if (ID.WR != 0)
+        RegFile[ID.WR].value = IF.PC; // Save the return address in rd
+        //cout << ID.Imm << endl;
+        IF.branchPC = IF.PC + ID.Imm/4 -1; // Set jump target
+        IF.branch = 1;
 
-        ID.RegWrite = true;
-        ID.RegDst = false;
+        ID.RegWrite = false;
+        ID.Jump = false;
         ID.Branch = false;
-        ID.Jump = true;
         ID.MemRead = false;
         ID.MemWrite = false;
-        ID.ALUSrc = false;
-        ID.ALUOp = 2; // Addition for PC+4
+        ID.ALUSrc = false; // Not used
+        ID.ALUOp = 0; // No ALU op needed, or 2 if ALU computes PC+4 elsewhere
         ID.MemtoReg = false;
-        ID.JumpAndLink = true;
+        ID.JumpAndLink = false; // Optional
     }
+        
     else if (opcode == "1100111" && instr.substr(17, 3) == "000")
     {
         ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2); // rs1
         ID.WR = stoi(instr.substr(20, 5), nullptr, 2);  // rd
-
         string imm_str = instr.substr(0, 12);
-        int sign_bit = imm_str[0] - '0';
         int32_t imm_val = stoi(imm_str, nullptr, 2);
-        if (sign_bit == 1)
+        if (imm_str[0] == '1')
         {
             imm_val |= 0xFFFFF000;
         }
         ID.Imm = imm_val;
+        //cout << ID.Imm << "gi" << endl;
+        IF.branchPC = RegFile[ID.RR1].value + ID.Imm/4; // Jump target
+        IF.branch = 1;
+        if (ID.WR != 0)
+        RegFile[ID.WR].value = IF.PC; // Save the return address in rd
 
-        ID.RegWrite = true;
-        ID.RegDst = false;
+        ID.RegWrite = false;  // Write PC + 4 to rd
+        ID.Jump = false;      // Jump instruction
         ID.Branch = false;
-        ID.Jump = true;
         ID.MemRead = false;
         ID.MemWrite = false;
-        ID.ALUSrc = true;
-        ID.ALUOp = 2; 
+        ID.ALUSrc = false;    // ALU uses immediate
+        ID.ALUOp = 0;        // Addition for rs1 + imm
         ID.MemtoReg = false;
-        ID.JumpAndLink = true;
-        ID.JumpReg = true;
+        ID.JumpAndLink = false; // Optional, for consistency with JAL
+        ID.JumpReg = false;   // Optional, to indicate register-based jump
     }
 
     if (EX.RegWrite && (ID.RR1 == EX.WriteReg || ID.RR2 == EX.WriteReg) || DM.RegWrite && (ID.RR1 == DM.WriteReg || ID.RR2 == DM.WriteReg)) {
