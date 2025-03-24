@@ -628,81 +628,60 @@ void Decoder_F(string opcode, string instr)
     }
     // J-type: JAL (Jump and Link)
     else if (opcode == "1101111")
+{
+    ID.WR = stoi(instr.substr(20, 5), nullptr, 2); // rd
+    string imm_str = instr.substr(0, 1) + instr.substr(12, 8) + instr.substr(11, 1) + instr.substr(1, 10);
+    int32_t imm_val = stoi(imm_str, nullptr, 2);
+    if (imm_str[0] == '1')
     {
-        ID.WR = stoi(instr.substr(20, 5), nullptr, 2); // rd
-
-        string imm_str = "";
-        imm_str += instr.substr(0, 1);  // imm[20]
-        imm_str += instr.substr(12, 8); // imm[19:12]
-        imm_str += instr.substr(11, 1); // imm[11]
-        imm_str += instr.substr(1, 10); // imm[10:1]
-        imm_str += "0";                 // imm[0] = 0
-
-        // Sign-extend the immediate
-        int sign_bit = imm_str[0] - '0';
-        int32_t imm_val = stoi(imm_str, nullptr, 2);
-        if (sign_bit == 1)
-        {
-            ID.WR = stoi(instr.substr(20, 5), nullptr, 2); // rd
-
-            // J-type immediate format: imm[20|10:1|11|19:12]
-            string imm_str = "";
-            imm_str += instr.substr(0, 1);  // imm[20]
-            imm_str += instr.substr(12, 8); // imm[19:12]
-            imm_str += instr.substr(11, 1); // imm[11]
-            imm_str += instr.substr(1, 10); // imm[10:1]
-            imm_str += "0";                 // imm[0] = 0
-
-            // Sign-extend the immediate
-            int sign_bit = imm_str[0] - '0';
-            int32_t imm_val = stoi(imm_str, nullptr, 2);
-            if (sign_bit == 1)
-            {
-                // Extend to the full 32 bits
-                imm_val |= 0xFFE00000; // Set the upper 11 bits to 1
-            }
-            ID.Imm = imm_val;
-
-            ID.RegWrite = true;
-            ID.RegDst = false;
-            ID.Branch = false;
-            ID.Jump = true;
-            ID.MemRead = false;
-            ID.MemWrite = false;
-            ID.ALUSrc = false;
-            ID.ALUOp = 2; // Addition for PC+4
-            ID.MemtoReg = false;
-            ID.JumpAndLink = true;
-        }
-        // I-type: JALR (Jump and Link Register)
-        else if (opcode == "1100111" && instr.substr(17, 3) == "000")
-        {
-            ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2); // rs1
-            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);  // rd
-
-            // Extract and sign-extend the immediate
-            string imm_str = instr.substr(0, 12);
-            int sign_bit = imm_str[0] - '0';
-            int32_t imm_val = stoi(imm_str, nullptr, 2);
-            if (sign_bit == 1)
-            {
-                imm_val |= 0xFFFFF000;
-            }
-            ID.Imm = imm_val;
-
-            ID.RegWrite = true;
-            ID.RegDst = false;
-            ID.Branch = false;
-            ID.Jump = true;
-            ID.MemRead = false;
-            ID.MemWrite = false;
-            ID.ALUSrc = true;
-            ID.ALUOp = 2; // Addition for base + offset
-            ID.MemtoReg = false;
-            ID.JumpAndLink = true;
-            ID.JumpReg = true;
-        }
+        imm_val |= 0xFFE00000;
     }
+    ID.Imm = imm_val << 1; // Shift left by 1 for JAL
+    if (ID.WR != 0)
+    RegFile[ID.WR].value = IF.PC; // Save the return address in rd
+    cout << ID.Imm << endl;
+    IF.branchPC = IF.PC + ID.Imm/4 -1; // Set jump target
+    IF.branch = 1;
+
+    ID.RegWrite = false;
+    ID.Jump = false;
+    ID.Branch = false;
+    ID.MemRead = false;
+    ID.MemWrite = false;
+    ID.ALUSrc = false; // Not used
+    ID.ALUOp = 0; // No ALU op needed, or 2 if ALU computes PC+4 elsewhere
+    ID.MemtoReg = false;
+    ID.JumpAndLink = false; // Optional
+}
+    
+else if (opcode == "1100111" && instr.substr(17, 3) == "000")
+{
+    ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2); // rs1
+    ID.WR = stoi(instr.substr(20, 5), nullptr, 2);  // rd
+    string imm_str = instr.substr(0, 12);
+    int32_t imm_val = stoi(imm_str, nullptr, 2);
+    if (imm_str[0] == '1')
+    {
+        imm_val |= 0xFFFFF000;
+    }
+    ID.Imm = imm_val;
+
+    IF.branchPC = RegFile[ID.RR1].value + ID.Imm; // Jump target
+    IF.branch = 1;
+    if (ID.WR != 0)
+    RegFile[ID.WR].value = IF.PC; // Save the return address in rd
+
+    ID.RegWrite = false;  // Write PC + 4 to rd
+    ID.Jump = false;      // Jump instruction
+    ID.Branch = false;
+    ID.MemRead = false;
+    ID.MemWrite = false;
+    ID.ALUSrc = false;    // ALU uses immediate
+    ID.ALUOp = 0;        // Addition for rs1 + imm
+    ID.MemtoReg = false;
+    ID.JumpAndLink = false; // Optional, for consistency with JAL
+    ID.JumpReg = false;   // Optional, to indicate register-based jump
+}
     ID.RD1 = RegFile[max(0, ID.RR1)].value;
     ID.RD2 = RegFile[max(0, ID.RR2)].value;
 }

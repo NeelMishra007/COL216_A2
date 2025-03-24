@@ -118,44 +118,6 @@ int main(int argc, char **argv)
         if (EX.InStr != -1 && EX.InStr < total_instructions && Output[2][EX.InStr] == -1)
             Output[2][EX.InStr] = cycle;
 
-        // if (ID.Branch && !ID.stall)
-        // {
-        //     bool branch_taken = false;
-
-        //     switch (ID.BranchType)
-        //     {
-        //     case 0: // BEQ: Branch if Equal
-        //         branch_taken = (RegFile[ID.RR1].value == RegFile[ID.RR2].value);
-        //         break;
-        //     case 1: // BNE: Branch if Not Equal
-        //         branch_taken = (RegFile[ID.RR1].value != RegFile[ID.RR2].value);
-        //         break;
-        //     case 2: // BLT: Branch if Less Than (signed)
-        //         branch_taken = (RegFile[ID.RR1].value < RegFile[ID.RR2].value);
-        //         break;
-        //     case 3: // BGE: Branch if Greater or Equal (signed)
-        //         branch_taken = (RegFile[ID.RR1].value >= RegFile[ID.RR2].value);
-        //         break;
-        //     case 4: // BLTU: Branch if Less Than (unsigned)
-        //         branch_taken = ((unsigned)RegFile[ID.RR1].value < (unsigned)RegFile[ID.RR2].value);
-        //         break;
-        //     case 5: // BGEU: Branch if Greater or Equal (unsigned)
-        //         branch_taken = ((unsigned)RegFile[ID.RR1].value >= (unsigned)RegFile[ID.RR2].value);
-        //         break;
-        //     default:
-        //         cout << "Unknown branch type encountered!" << endl;
-        //         break;
-        //     }
-
-        // if (branch_taken)
-        // {
-        //     // Convert byte offset to instruction offset: assume PC increments by 1 per instruction.
-        //     // ID.Imm is in bytes so divide by 4, then adjust offset as needed (-2 adjustment as in your design).
-        //     IF.PC = IF.PC + (ID.Imm / 4) - 2;
-        //     cout << "Branch taken, new PC: " << IF.PC << endl;
-        //     IF.InStr = -1;     // Insert bubble in IF stage.
-        //     ID.Branch = false; // Clear branch signal after taken.
-
         process_ID(instructions_hex);
         if (ID.InStr != -1 && ID.InStr < total_instructions && Output[1][ID.InStr] == -1)
             Output[1][ID.InStr] = cycle;
@@ -241,7 +203,6 @@ void process_IF(const vector<string> &instructions)
         IF.InStr = IF.PC;
         IF.branch = -1;
         IF.branchPC = -1;
-
         cout << IF.PC << endl;
     }
     if (IF.branch == 0)
@@ -281,7 +242,7 @@ void process_ID(const vector<string> &instructions)
     instr = hexToBin(instr);
 
     string opcode = instr.substr(25, 7);
-    //cout << opcode;
+    // cout << opcode;
     Decoder_F(opcode, instr);
 }
 
@@ -307,25 +268,10 @@ void process_EX()
             loadHazard = true;
         }
     }
-    bool branchHazard = false;
-    if (ID.Branch) {
-        //cout << ID.RR1 << " " << ID.RR2 << endl;
-        //cout << EX.WriteReg << endl;
-        // Case 1: Hazard from EX stage (e.g., a load in EX)
-        if (EX.RegWrite && (EX.WriteReg == ID.RR1 || EX.WriteReg == ID.RR2)) {
-            branchHazard = true;
-            // cout << "ID stage detected branch hazard from EX stage at instruction " << ID.InStr << ". Inserting bubble." << endl;
-        }
-        // Case 2: Hazard from DM stage (e.g., a load in DM)
-        else if (DM.RegWrite && (DM.WriteReg == ID.RR1 || DM.WriteReg == ID.RR2)) {
-            branchHazard = true;
-            //cout << "ID stage detected branch hazard from DM stage at instruction " << ID.InStr << ". Inserting bubble." << endl;
-        }
-    }
- 
-    if (loadHazard || branchHazard)
+
+    if (loadHazard)
     {
-        //cout << "EX stage detected load-use hazard at instruction " << ID.InStr << ". Inserting bubble." << endl;
+        // cout << "EX stage detected load-use hazard at instruction " << ID.InStr << ". Inserting bubble." << endl;
         EX.InStr = -1;
         ID.stall = true;
         return;
@@ -342,20 +288,19 @@ void process_EX()
     EX.WriteData = ID.RD2;
     EX.WriteDataReg = ID.RR2;
 
-     // For store instructions, prepare the write data and check for forwarding.
-     EX.WriteData = ID.RD2;
-     EX.WriteDataReg = ID.RR2;
-     if (EX.MemWrite == true) // Forwarding for DM last-to-last instruction.
-     {
-         if (WB.RegWrite == true && WB.WriteReg == EX.WriteDataReg)
-         {
-             if (WB.MemtoReg == true)
-                 EX.WriteData = WB.Read_data;
-             else
-                 EX.WriteData = WB.ALU_res;
-         }
-     }
-
+    // For store instructions, prepare the write data and check for forwarding.
+    EX.WriteData = ID.RD2;
+    EX.WriteDataReg = ID.RR2;
+    if (EX.MemWrite == true) // Forwarding for DM last-to-last instruction.
+    {
+        if (WB.RegWrite == true && WB.WriteReg == EX.WriteDataReg)
+        {
+            if (WB.MemtoReg == true)
+                EX.WriteData = WB.Read_data;
+            else
+                EX.WriteData = WB.ALU_res;
+        }
+    }
 
     int arg1 = ID.RD1;
     if (DM.RegWrite && DM.WriteReg == ID.RR1)
@@ -417,30 +362,30 @@ void process_MEM()
     DM.MemtoReg = EX.MemtoReg;
     DM.RegWrite = EX.RegWrite;
     DM.Address = EX.ALU_res;
-    //cout << DM.RegWrite << " " << DM.WriteReg << " " << DM.MemtoReg << endl;
+    // cout << DM.RegWrite << " " << DM.WriteReg << " " << DM.MemtoReg << endl;
 
     if (DM.MemRead)
     {
         DM.Read_data = MEM[DM.Address];
     }
     else if (DM.MemWrite == true)
-     {
-         if (WB.RegWrite == true && WB.WriteReg == EX.WriteDataReg)
-         { // previous instruction
-             if (WB.MemtoReg == true)
-             {
-                 MEM[DM.Address] = WB.Read_data;
-             }
-             else
-             {
-                 MEM[DM.Address] = WB.ALU_res;
-             }
-         }
-         else
-         {
-             MEM[DM.Address] = DM.Write_data;
-         }
-     }
+    {
+        if (WB.RegWrite == true && WB.WriteReg == EX.WriteDataReg)
+        { // previous instruction
+            if (WB.MemtoReg == true)
+            {
+                MEM[DM.Address] = WB.Read_data;
+            }
+            else
+            {
+                MEM[DM.Address] = WB.ALU_res;
+            }
+        }
+        else
+        {
+            MEM[DM.Address] = DM.Write_data;
+        }
+    }
 }
 
 void process_WB()
