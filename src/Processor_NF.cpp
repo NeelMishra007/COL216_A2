@@ -147,7 +147,7 @@ int main(int argc, char **argv)
                 break;
             }
 
-            if (branch_taken)
+            if (branch_taken && !(ID.InStr == -1))
             {
                 IF.PC = IF.PC + (ID.Imm / 4) - 2;
                 cout << "Branch taken, new PC: " << IF.PC << endl;
