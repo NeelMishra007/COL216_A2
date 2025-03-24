@@ -477,6 +477,7 @@ void Decoder_F(string opcode, string instr)
     // B-type: Branch instructions
     else if (opcode == "1100011")
     {
+        cout << "branch";
         ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2); // rs1
         ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);  // rs2
 
@@ -506,19 +507,22 @@ void Decoder_F(string opcode, string instr)
         ID.MemRead = false;
         ID.MemWrite = false;
         ID.ALUSrc = false;
-        bool ALU_stall_prev = false;
-        bool DM_stall_prev2 = false;
         int arg1 = RegFile[ID.RR1].value, arg2 = RegFile[ID.RR2].value;
+
         if (EX.RegWrite && (EX.WriteReg == ID.RR1 || EX.WriteReg == ID.RR2) && !EX.MemtoReg) // forward last ALU one stall
         {
-            ALU_stall_prev = true;
-            ID.stall = true;
+            ID.ALU_stall_prev = true;
+            IF.stall = true;
+            ID.InStr = -1;
+            cout << "hi";
             return;
         }
         if (EX.RegWrite && (EX.WriteReg == ID.RR1 || EX.WriteReg == ID.RR2) && EX.MemtoReg) // forawrd last DM two stall
         {
             ID.DM_stall_prev = 1; // used at top in id.stall
             ID.stall = true;
+            IF.stall = true;
+            ID.InStr = -1;
             return;
         }
         if (DM.RegWrite && (DM.WriteReg == ID.RR1 || DM.WriteReg == ID.RR2) && !DM.MemtoReg) // forward last to last instr ALU, no stall
@@ -530,29 +534,32 @@ void Decoder_F(string opcode, string instr)
         }
         if (DM.RegWrite && (DM.WriteReg == ID.RR1 || DM.WriteReg == ID.RR2) && DM.MemtoReg) // forward last to last DM, one stall
         {
-            DM_stall_prev2 = true;
-            ID.stall = true;
+            ID.DM_stall_prev2 = true;
+            IF.stall = true;
+            ID.InStr = -1;
             return;
         }
 
-        if (ALU_stall_prev)
+        if (ID.ALU_stall_prev)
         {
+            cout << "hi";
             if (DM.WriteReg == ID.RR1)
                 arg1 = DM.ALU_res;
             else
                 arg2 = DM.ALU_res;
-            ALU_stall_prev = false;
+            ID.ALU_stall_prev = false;
         }
-        if (DM_stall_prev2)
+        if (ID.DM_stall_prev2)
         {
             if (DM.WriteReg == ID.RR1)
                 arg1 = WB.Read_data;
             else
                 arg2 = WB.Read_data;
-            DM_stall_prev2 = false;
+            ID.DM_stall_prev2 = false;
         }
-        if (ID.DM_stall_prev == 2)
+        if (ID.DM_stall_prev == 1)
         {
+            cout << "hi2";
             if (WB.WriteReg == ID.RR1)
                 arg1 = WB.Read_data;
             else
@@ -590,32 +597,33 @@ void Decoder_F(string opcode, string instr)
             ID.ALUOp = 11;     // SLTU for comparison
             ID.BranchType = 5; // BGEU
         }
-
+        cout << "hi";
         switch (ID.BranchType)
-            {
-            case 0: // BEQ: Branch if Equal
-                IF.branch= (arg1 == arg2);
-                break;
-            case 1: // BNE: Branch if Not Equal
-                IF.branch= (arg1 != arg2);
-                break;
-            case 2: // BLT: Branch if Less Than (signed)
-                IF.branch = (arg1 < arg2);
-                break;
-            case 3: // BGE: Branch if Greater or Equal (signed)
-                IF.branch = (arg1 >= arg2);
-                break;
-            case 4: // BLTU: Branch if Less Than (unsigned)
-                IF.branch = ((unsigned)arg1 < (unsigned)arg2);
-                break;
-            case 5: // BGEU: Branch if Greater or Equal (unsigned)
-                IF.branch= ((unsigned)arg1 >= (unsigned)arg2);
-                break;
-            default:
-                cout << "Unknown branch type encountered!" << endl;
-                break;
-            }
-        if (IF.branch == 1) IF.branchPC = IF.PC + (ID.Imm / 4);
+        {
+        case 0: // BEQ: Branch if Equal
+            IF.branch = (arg1 == arg2);
+            break;
+        case 1: // BNE: Branch if Not Equal
+            IF.branch = (arg1 != arg2);
+            break;
+        case 2: // BLT: Branch if Less Than (signed)
+            IF.branch = (arg1 < arg2);
+            break;
+        case 3: // BGE: Branch if Greater or Equal (signed)
+            IF.branch = (arg1 >= arg2);
+            break;
+        case 4: // BLTU: Branch if Less Than (unsigned)
+            IF.branch = ((unsigned)arg1 < (unsigned)arg2);
+            break;
+        case 5: // BGEU: Branch if Greater or Equal (unsigned)
+            IF.branch = ((unsigned)arg1 >= (unsigned)arg2);
+            break;
+        default:
+            cout << "Unknown branch type encountered!" << endl;
+            break;
+        }
+        if (IF.branch == 1)
+            IF.branchPC = IF.PC + (ID.Imm / 4);
     }
     // J-type: JAL (Jump and Link)
     else if (opcode == "1101111")

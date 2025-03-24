@@ -48,6 +48,8 @@ struct IDStage
     int InStr;  // Index of instruction; -1 indicates bubble
 
     int DM_stall_prev; // Counter for memory stall propagation
+    bool ALU_stall_prev;
+    bool DM_stall_prev2;
 };
 
 // Execute stage

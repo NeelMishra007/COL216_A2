@@ -261,14 +261,8 @@ void process_ID(const vector<string> &instructions)
         cout << "ID stage stalled; holding instruction " << ID.InStr << endl;
         ID.stall = false;
         IF.stall = true;
-        if (ID.DM_stall_prev == 1)
-        {
-            ID.DM_stall_prev = 2;
-            ID.stall = true;
-        }
         return;
     }
-    ID.DM_stall_prev = 0;
     if (IF.InStr == -1 || IF.InStr >= instructions.size())
     {
         ID.InStr = -1;
@@ -285,7 +279,7 @@ void process_ID(const vector<string> &instructions)
     instr = hexToBin(instr);
 
     string opcode = instr.substr(25, 7);
-
+    cout << opcode;
     Decoder_F(opcode, instr);
 }
 
@@ -314,6 +308,21 @@ void process_EX()
     EX.RegWrite = ID.RegWrite;
     EX.WriteData = ID.RD2;
     EX.WriteDataReg = ID.RR2;
+
+     // For store instructions, prepare the write data and check for forwarding.
+     EX.WriteData = ID.RD2;
+     EX.WriteDataReg = ID.RR2;
+     if (EX.MemWrite == true) // Forwarding for DM last-to-last instruction.
+     {
+         if (WB.RegWrite == true && WB.WriteReg == EX.WriteDataReg)
+         {
+             if (WB.MemtoReg == true)
+                 EX.WriteData = WB.Read_data;
+             else
+                 EX.WriteData = WB.ALU_res;
+         }
+     }
+
 
     int arg1 = ID.RD1;
     if (DM.RegWrite && DM.WriteReg == ID.RR1)
@@ -381,10 +390,24 @@ void process_MEM()
     {
         DM.Read_data = MEM[DM.Address];
     }
-    else if (DM.MemWrite)
-    {
-        MEM[DM.Address] = DM.Write_data;
-    }
+    else if (DM.MemWrite == true)
+     {
+         if (WB.RegWrite == true && WB.WriteReg == EX.WriteDataReg)
+         { // previous instruction
+             if (WB.MemtoReg == true)
+             {
+                 MEM[DM.Address] = WB.Read_data;
+             }
+             else
+             {
+                 MEM[DM.Address] = WB.ALU_res;
+             }
+         }
+         else
+         {
+             MEM[DM.Address] = DM.Write_data;
+         }
+     }
 }
 
 void process_WB()

@@ -1,3 +1,4 @@
-0:        0020C463        bne x1, x2, 8
-4:        00208093        addi x1, x1, 2
-8:        00408093        addi x1, x1, 4
+0:        00012083        lw x1, 0(x2)    # Load word from address in x2 into x1
+4:        0020c463        bne x1, x2, 8   # Branch if x1 ≠ x2 to address 8
+8:        003100b3        add x1, x2, x3  # x1 = x2 + x3
+c:        00210113        addi x2, x2, 2  # x2 = x2 + 2
