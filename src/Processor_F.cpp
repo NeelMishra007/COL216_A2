@@ -241,6 +241,8 @@ void process_IF(const vector<string> &instructions)
         IF.InStr = IF.PC;
         IF.branch = -1;
         IF.branchPC = -1;
+
+        cout << IF.PC << endl;
     }
     if (IF.branch == 0)
     {
@@ -279,7 +281,7 @@ void process_ID(const vector<string> &instructions)
     instr = hexToBin(instr);
 
     string opcode = instr.substr(25, 7);
-    cout << opcode;
+    //cout << opcode;
     Decoder_F(opcode, instr);
 }
 
@@ -295,6 +297,37 @@ void process_EX()
         EX.Branch = false;
         EX.Jump = false;
 
+        return;
+    }
+    bool loadHazard = false;
+    if (DM.RegWrite && DM.MemtoReg)
+    {
+        if (DM.WriteReg == ID.RR1 || (!ID.ALUSrc && DM.WriteReg == ID.RR2))
+        {
+            loadHazard = true;
+        }
+    }
+    bool branchHazard = false;
+    if (ID.Branch) {
+        //cout << ID.RR1 << " " << ID.RR2 << endl;
+        //cout << EX.WriteReg << endl;
+        // Case 1: Hazard from EX stage (e.g., a load in EX)
+        if (EX.RegWrite && (EX.WriteReg == ID.RR1 || EX.WriteReg == ID.RR2)) {
+            branchHazard = true;
+            // cout << "ID stage detected branch hazard from EX stage at instruction " << ID.InStr << ". Inserting bubble." << endl;
+        }
+        // Case 2: Hazard from DM stage (e.g., a load in DM)
+        else if (DM.RegWrite && (DM.WriteReg == ID.RR1 || DM.WriteReg == ID.RR2)) {
+            branchHazard = true;
+            //cout << "ID stage detected branch hazard from DM stage at instruction " << ID.InStr << ". Inserting bubble." << endl;
+        }
+    }
+ 
+    if (loadHazard || branchHazard)
+    {
+        //cout << "EX stage detected load-use hazard at instruction " << ID.InStr << ". Inserting bubble." << endl;
+        EX.InStr = -1;
+        ID.stall = true;
         return;
     }
 
@@ -384,7 +417,7 @@ void process_MEM()
     DM.MemtoReg = EX.MemtoReg;
     DM.RegWrite = EX.RegWrite;
     DM.Address = EX.ALU_res;
-    cout << DM.RegWrite << " " << DM.WriteReg << " " << DM.MemtoReg << endl;
+    //cout << DM.RegWrite << " " << DM.WriteReg << " " << DM.MemtoReg << endl;
 
     if (DM.MemRead)
     {
@@ -432,5 +465,6 @@ void process_WB()
     if (WB.RegWrite)
     {
         RegFile[WB.WriteReg].value = (WB.MemtoReg ? WB.Read_data : WB.ALU_res);
+        cout << WB.WriteReg << " " << RegFile[WB.WriteReg].value << endl;
     }
 }

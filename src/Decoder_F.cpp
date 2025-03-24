@@ -477,7 +477,7 @@ void Decoder_F(string opcode, string instr)
     // B-type: Branch instructions
     else if (opcode == "1100011")
     {
-        cout << "branch";
+        //cout << "branch";
         ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2); // rs1
         ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);  // rs2
 
@@ -488,7 +488,7 @@ void Decoder_F(string opcode, string instr)
         imm_str += instr.substr(24, 1); // imm[11] (stored at bit 24)
         imm_str += instr.substr(1, 6);  // imm[10:5]
         imm_str += instr.substr(20, 4); // imm[4:1]
-        // imm_str += "0";                 // imm[0] = 0
+        imm_str += "0";                 // imm[0] = 0
 
         // Sign-extend the immediate
         int sign_bit = imm_str[0] - '0';
@@ -514,7 +514,7 @@ void Decoder_F(string opcode, string instr)
             ID.ALU_stall_prev = true;
             IF.stall = true;
             ID.InStr = -1;
-            cout << "hi";
+            //cout << "hi";
             return;
         }
         if (EX.RegWrite && (EX.WriteReg == ID.RR1 || EX.WriteReg == ID.RR2) && EX.MemtoReg) // forawrd last DM two stall
@@ -542,7 +542,7 @@ void Decoder_F(string opcode, string instr)
 
         if (ID.ALU_stall_prev)
         {
-            cout << "hi";
+            //cout << "hi";
             if (DM.WriteReg == ID.RR1)
                 arg1 = DM.ALU_res;
             else
@@ -559,7 +559,7 @@ void Decoder_F(string opcode, string instr)
         }
         if (ID.DM_stall_prev == 1)
         {
-            cout << "hi2";
+            //cout << "hi2";
             if (WB.WriteReg == ID.RR1)
                 arg1 = WB.Read_data;
             else
@@ -597,7 +597,7 @@ void Decoder_F(string opcode, string instr)
             ID.ALUOp = 11;     // SLTU for comparison
             ID.BranchType = 5; // BGEU
         }
-        cout << "hi";
+        //cout << "hi";
         switch (ID.BranchType)
         {
         case 0: // BEQ: Branch if Equal
@@ -623,7 +623,8 @@ void Decoder_F(string opcode, string instr)
             break;
         }
         if (IF.branch == 1)
-            IF.branchPC = IF.PC + (ID.Imm / 4);
+            IF.branchPC = IF.PC + (ID.Imm / 4) - 1;
+            cout << "yes" << " " << IF.branchPC << endl;
     }
     // J-type: JAL (Jump and Link)
     else if (opcode == "1101111")
@@ -635,7 +636,7 @@ void Decoder_F(string opcode, string instr)
         imm_str += instr.substr(12, 8); // imm[19:12]
         imm_str += instr.substr(11, 1); // imm[11]
         imm_str += instr.substr(1, 10); // imm[10:1]
-        // imm_str += "0";                 // imm[0] = 0
+        imm_str += "0";                 // imm[0] = 0
 
         // Sign-extend the immediate
         int sign_bit = imm_str[0] - '0';
@@ -702,4 +703,6 @@ void Decoder_F(string opcode, string instr)
             ID.JumpReg = true;
         }
     }
+    ID.RD1 = RegFile[max(0, ID.RR1)].value;
+    ID.RD2 = RegFile[max(0, ID.RR2)].value;
 }

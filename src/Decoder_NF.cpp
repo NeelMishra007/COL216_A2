@@ -595,4 +595,6 @@ void Decoder_NF(IFStage &IF, IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB
         ID.InStr = -1;
         IF.stall = true;
     }
+    ID.RD1 = RegFile[max(0, ID.RR1)].value;
+    ID.RD2 = RegFile[max(0, ID.RR2)].value;
 }

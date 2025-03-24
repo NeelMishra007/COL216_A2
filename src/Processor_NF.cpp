@@ -14,11 +14,13 @@ using namespace std;
 const int N = 2000005;
 int MEM[N];
 
-typedef struct {
-    int value;
-} Register;
 
 Register RegFile[32];
+IFStage IF;
+IDStage ID;
+EXStage EX;
+MEMStage DM;
+WBStage WB;
 
 string hexToBin(const string &hex) {
     string binary;
@@ -45,15 +47,13 @@ void process_EX();
 void process_MEM();
 void process_WB();
 
-IFStage IF = {0, false, -1};
-IDStage ID = {.RR1 = 0, .RR2 = 0, .WR = 0, .RD1 = 0, .RD2 = 0, .Imm = 0, .RegWrite = false, .RegDst = false, .Branch = false, .Jump = false, .MemRead = false, .MemWrite = false, .ALUSrc = false, .ALUOp = 0, .MemtoReg = false, .stall = false, .InStr = -1, .DM_stall_prev = 0};
-
-EXStage EX = {0, false, 0, 0, 0, false, false, false, false, false, false, -1, false};
-MEMStage DM = {0, 0, 0, false, false, false, false, 0, 0, -1, false};
-WBStage WB = {false, false, 0, 0, 0, -1, false};
-
 int main(int argc, char **argv)
 {
+    IF = {0, false, -1, -1, -1};
+    ID = {.RR1 = 0, .RR2 = 0, .WR = 0, .RD1 = 0, .RD2 = 0, .Imm = 0, .RegWrite = false, .RegDst = false, .Branch = false, .Jump = false, .MemRead = false, .MemWrite = false, .ALUSrc = false, .ALUOp = 0, .MemtoReg = false, .stall = false, .InStr = -1, .DM_stall_prev = 0};
+    EX = {0, false, 0, 0, 0, false, false, false, false, false, false, -1, false};
+    DM = {0, 0, 0, false, false, false, false, 0, 0, -1, false};
+    WB = {false, false, 0, 0, 0, -1, false};
     if (argc < 3)
     {
         cerr << "Usage: " << argv[0] << " <input.txt> <num_cycles>" << endl;
@@ -367,5 +367,7 @@ void process_WB()
     if (WB.RegWrite)
     {
         RegFile[WB.WriteReg].value = (WB.MemtoReg ? WB.Read_data : WB.ALU_res);
+        cout << WB.WriteReg << " " << RegFile[WB.WriteReg].value << endl;
+        
     }
 }
