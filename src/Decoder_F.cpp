@@ -4,7 +4,7 @@
 #include <cstdint>
 using namespace std;
 
-void Decoder(IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB, string opcode, string instr)
+void Decoder_F(string opcode, string instr)
 {
     if (opcode == "0110011")
     {
@@ -694,3 +694,4 @@ void Decoder(IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB, string opcode,
             ID.JumpReg = true;
         }
     }
+}

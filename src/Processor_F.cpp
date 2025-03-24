@@ -9,10 +9,18 @@
 #include "Decoder_F.hpp"
 #include "Processor.hpp"
 
+
 using namespace std;
 
 const int N = 2000005;
 int MEM[N];
+
+Register RegFile[32];
+IFStage IF;
+IDStage ID;
+EXStage EX;
+MEMStage DM;
+WBStage WB;
 
 string hexToBin(const string &hex)
 {
@@ -140,7 +148,6 @@ WB = {false, false, 0, 0, 0, -1, false};
         //         break;
         //     }
 
-<<<<<<< Updated upstream
             // if (branch_taken)
             // {
             //     // Convert byte offset to instruction offset: assume PC increments by 1 per instruction.
@@ -149,17 +156,7 @@ WB = {false, false, 0, 0, 0, -1, false};
             //     cout << "Branch taken, new PC: " << IF.PC << endl;
             //     IF.InStr = -1;     // Insert bubble in IF stage.
             //     ID.Branch = false; // Clear branch signal after taken.
-            // }
-=======
-            if (branch_taken)
-            {
-                IF.PC = IF.PC + (ID.Imm / 4) - 1;
-                cout << "Branch taken, new PC: " << IF.PC << endl;
-                IF.InStr = -1; 
-                ID.Branch = false; 
-            }
->>>>>>> Stashed changes
-        }
+
 
         process_ID(instructions_hex);
         if (ID.InStr != -1 && ID.InStr < total_instructions && Output[1][ID.InStr] == -1)
@@ -283,7 +280,7 @@ void process_ID(const vector<string> &instructions)
 
     string opcode = instr.substr(25, 7);
 
-    Decoder_F(ID, EX, DM, WB, opcode, instr);
+    Decoder_F(opcode, instr);
 }
 
 void process_EX()

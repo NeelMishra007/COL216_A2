@@ -4,6 +4,6 @@
 #include <string>
 #include "Processor.hpp" 
 
-void Decoder_F(IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB, std::string opcode, std::string instr);
+void Decoder_F(std::string opcode, std::string instr);
 
 #endif

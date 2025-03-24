@@ -12,7 +12,7 @@ struct IFStage
 {
     int PC;
     bool stall;
-    int InStr; // Holds the index of the instruction fetched; -1 means bubble
+    int InStr;
     int branch;
     int branchPC;
 };
@@ -105,9 +105,8 @@ struct WBStage
 
 extern IFStage IF;
 extern IDStage ID;
-
 extern EXStage EX;
-extern MEMStage DM ;
-extern WBStage WB ;
+extern MEMStage DM;
+extern WBStage WB;
 
 #endif
