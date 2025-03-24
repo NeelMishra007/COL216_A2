@@ -1,5 +1,5 @@
 0:   00012083   lw   x1, 0(x2)    # x1 = memory[x2 + 0]
-4:   0080006f   jal  x1, 8        # jump to 0xc, x1 = 0x8
+4:   00800067   jalr x1, 8(x0)    # jump to 0x8, x1 = return address
 8:   00110113   addi x2, x2, 1    # x2 = x2 + 1
 c:   00118193   addi x3, x3, 1    # x3 = x3 + 1
 10:  00120213   addi x4, x4, 1    # x4 = x4 + 1
