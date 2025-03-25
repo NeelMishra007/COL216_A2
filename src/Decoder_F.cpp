@@ -654,34 +654,34 @@ void Decoder_F(string opcode, string instr)
         ID.MemtoReg = false;
         ID.JumpAndLink = false; // Optional
     }
-else if (opcode == "1100111" && instr.substr(17, 3) == "000")
-{
-    ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2); // rs1
-    ID.WR = stoi(instr.substr(20, 5), nullptr, 2);  // rd
-    string imm_str = instr.substr(0, 12);
-    int32_t imm_val = stoi(imm_str, nullptr, 2);
-    if (imm_str[0] == '1')
+    else if (opcode == "1100111" && instr.substr(17, 3) == "000")
     {
-        imm_val |= 0xFFFFF000;
-    }
-    ID.Imm = imm_val;
-    //cout << ID.Imm << "gi" << endl;
-    IF.branchPC = RegFile[ID.RR1].value + ID.Imm/4; // Jump target
-    IF.branch = 1;
-    if (ID.WR != 0)
-    RegFile[ID.WR].value = IF.PC; // Save the return address in rd
+        ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2); // rs1
+        ID.WR = stoi(instr.substr(20, 5), nullptr, 2);  // rd
+        string imm_str = instr.substr(0, 12);
+        int32_t imm_val = stoi(imm_str, nullptr, 2);
+        if (imm_str[0] == '1')
+        {
+            imm_val |= 0xFFFFF000;
+        }
+        ID.Imm = imm_val;
+        //cout << ID.Imm << "gi" << endl;
+        IF.branchPC = RegFile[ID.RR1].value + ID.Imm/4; // Jump target
+        IF.branch = 1;
+        if (ID.WR != 0)
+        RegFile[ID.WR].value = IF.PC; // Save the return address in rd
 
-    ID.RegWrite = false;  // Write PC + 4 to rd
-    ID.Jump = false;      // Jump instruction
-    ID.Branch = false;
-    ID.MemRead = false;
-    ID.MemWrite = false;
-    ID.ALUSrc = false;    // ALU uses immediate
-    ID.ALUOp = 0;        // Addition for rs1 + imm
-    ID.MemtoReg = false;
-    ID.JumpAndLink = false; // Optional, for consistency with JAL
-    ID.JumpReg = false;   // Optional, to indicate register-based jump
-}
+        ID.RegWrite = false;  // Write PC + 4 to rd
+        ID.Jump = false;      // Jump instruction
+        ID.Branch = false;
+        ID.MemRead = false;
+        ID.MemWrite = false;
+        ID.ALUSrc = false;    // ALU uses immediate
+        ID.ALUOp = 0;        // Addition for rs1 + imm
+        ID.MemtoReg = false;
+        ID.JumpAndLink = false; // Optional, for consistency with JAL
+        ID.JumpReg = false;   // Optional, to indicate register-based jump
+    }
     ID.RD1 = RegFile[max(0, ID.RR1)].value;
     ID.RD2 = RegFile[max(0, ID.RR2)].value;
 }

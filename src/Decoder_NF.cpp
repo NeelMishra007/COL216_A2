@@ -596,7 +596,8 @@ void Decoder_NF(IFStage &IF, IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB
             IF.branchPC = IF.PC + (ID.Imm / 4) - 1;
             //cout << "yes" << " " << IF.branchPC << endl;
     }
-        else if (opcode == "1101111")
+    // J-type: JAL (Jump and Link)
+    else if (opcode == "1101111")
     {
         ID.WR = stoi(instr.substr(20, 5), nullptr, 2); // rd
         // Extract the 20-bit immediate: imm[20|19:12|11|10:1]
@@ -622,8 +623,8 @@ void Decoder_NF(IFStage &IF, IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB
         ID.ALUOp = 0; // No ALU op needed
         ID.MemtoReg = false;
         ID.JumpAndLink = false; // Optional
+        return;
     }
-        
     else if (opcode == "1100111" && instr.substr(17, 3) == "000")
     {
         ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2); // rs1
@@ -651,9 +652,10 @@ void Decoder_NF(IFStage &IF, IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB
         ID.MemtoReg = false;
         ID.JumpAndLink = false; // Optional, for consistency with JAL
         ID.JumpReg = false;   // Optional, to indicate register-based jump
+        return;
     }
-
     if (EX.RegWrite && (ID.RR1 == EX.WriteReg || ID.RR2 == EX.WriteReg) || DM.RegWrite && (ID.RR1 == DM.WriteReg || ID.RR2 == DM.WriteReg)) {
+        cout << ID.RR1 << " " << ID.RR2 << " " << EX.WriteReg << " " << DM.WriteReg << endl;
         ID.InStr = -1;
         IF.stall = true;
     }

@@ -120,14 +120,7 @@ int main(int argc, char **argv)
 
         process_WB();
         if (WB.InStr != -1 && WB.InStr < total_instructions) {
-            if (Output[WB.InStr][cycle - 1] != 5) Output[WB.InStr][cycle] = 5;
-        }
-
-        if (WB.InStr == total_instructions - 1)
-        {
-            if (Output[WB.InStr][cycle - 1] != 5) Output[WB.InStr][cycle] = 5;
-            //cout << "Pipeline completed at cycle " << cycle << endl;
-            break;
+            Output[WB.InStr][cycle] = 5;
         }
 
         process_MEM();
@@ -150,9 +143,9 @@ int main(int argc, char **argv)
             Output[IF.InStr][cycle] = 1;
         }
 
-        //cout << "Cycle " << cycle << ": IF:" << IF.InStr << " ID:" << ID.InStr << " EX:" << EX.InStr << " MEM:" << DM.InStr << " WB:" << WB.InStr << endl;
+        cout << "Cycle " << cycle << ": IF:" << IF.InStr << " ID:" << ID.InStr << " EX:" << EX.InStr << " MEM:" << DM.InStr << " WB:" << WB.InStr << endl;
     }
-    string output_filename = "../outputfiles/_noforward out.txt.txt.txt";
+    string output_filename = "../outputfiles/_noforward_out.txt";
     ofstream outfile(output_filename);
     if (!outfile) {
         cerr << "Error: Unable to open output file " << output_filename << endl;
@@ -235,18 +228,16 @@ void process_ID(const vector<string> &instructions)
     if (ID.stall)
     {
         //cout << "ID stage stalled; holding instruction " << ID.InStr << endl;
-
         ID.stall = false;
         IF.stall = true;
-        if (ID.DM_stall_prev == 1)
-        {
-            ID.DM_stall_prev = 2;
-            DM.stall = true;
-        }
         return;
     }
-    int DM_stall_prev = 0;
     if (IF.InStr == -1 || IF.InStr >= instructions.size())
+    {
+        ID.InStr = -1;
+        return;
+    }
+    if (IF.branch == 2 || IF.branch == 3)
     {
         ID.InStr = -1;
         return;
@@ -278,6 +269,8 @@ void process_EX()
 
     EX.InStr = ID.InStr;
     EX.WriteReg = ID.WR;
+
+    cout << EX.WriteReg << endl;
     EX.Branch = ID.Branch;
     EX.Jump = ID.Jump;
     EX.MemRead = ID.MemRead;

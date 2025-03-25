@@ -127,13 +127,6 @@ int main(int argc, char **argv)
            Output[WB.InStr][cycle] = 5;
         }
 
-        if (WB.InStr == total_instructions - 1)
-        {
-            Output[WB.InStr][cycle] = 5;
-            //cout << "Pipeline completed at cycle " << cycle << endl;
-            break;
-        }
-
         process_MEM();
         if (DM.InStr != -1 && DM.InStr < total_instructions) {
             Output[DM.InStr][cycle] = 4;
@@ -154,9 +147,9 @@ int main(int argc, char **argv)
             Output[IF.InStr][cycle] = 1;
         }
 
-        //cout << "Cycle " << cycle << ": IF:" << IF.InStr << " ID:" << ID.InStr << " EX:" << EX.InStr << " MEM:" << DM.InStr << " WB:" << WB.InStr << endl;
+        cout << "Cycle " << cycle << ": IF:" << IF.InStr << " ID:" << ID.InStr << " EX:" << EX.InStr << " MEM:" << DM.InStr << " WB:" << WB.InStr << endl;
     }
-    string output_filename = "../outputfiles/_forward_out.txt.txt";
+    string output_filename = "../outputfiles/_forward_out.txt";
     ofstream outfile(output_filename);
     if (!outfile) {
         cerr << "Error: Unable to open output file " << output_filename << endl;
