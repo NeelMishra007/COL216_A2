@@ -4,6 +4,8 @@
 #include <cstdint>
 using namespace std;
 
+#define int int32_t
+
 void Decoder_F(string opcode, string instr)
 {
     if (opcode == "0110011")

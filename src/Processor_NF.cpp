@@ -12,7 +12,9 @@
 using namespace std;
 
 const int N = 2000005;
-int MEM[N];
+unsigned char MEM[N];
+
+#define int int32_t
 
 
 Register RegFile[32];
@@ -354,23 +356,6 @@ void process_MEM()
     DM.MemSize = EX.MemSize;
     DM.MemSignExtend = EX.MemSignExtend;
 
-    if (DM.MemWrite)
-    {
-        // Store operations with different memory sizes
-        switch (DM.MemSize)
-        {
-        case 1: // Store Byte
-            MEM[DM.Address] = DM.Write_data & 0xFF;
-            break;
-        case 2: // Store Halfword
-            *((uint16_t*)&MEM[DM.Address]) = DM.Write_data & 0xFFFF;
-            break;
-        case 4: // Store Word
-            *((int32_t*)&MEM[DM.Address]) = DM.Write_data;
-            break;
-        }
-    }
-    
     if (DM.MemRead)
     {
         // Load operations with different memory sizes and sign extension
@@ -379,24 +364,88 @@ void process_MEM()
         case 1: // Byte
         {
             uint8_t byte_val = MEM[DM.Address];
-            if (DM.MemSignExtend)
-                DM.Read_data = (int8_t)byte_val; // Sign extend
-            else
-                DM.Read_data = byte_val; // Zero extend
+            DM.Read_data = DM.MemSignExtend ? (int8_t)byte_val : byte_val;
             break;
         }
-        case 2: // Halfword
+        case 2: // Halfword (16-bit)
         {
-            uint16_t halfword_val = *((uint16_t*)&MEM[DM.Address]);
-            if (DM.MemSignExtend)
-                DM.Read_data = (int16_t)halfword_val; // Sign extend
-            else
-                DM.Read_data = halfword_val; // Zero extend
+            uint16_t halfword_val = MEM[DM.Address] | (MEM[DM.Address + 1] << 8);
+            DM.Read_data = DM.MemSignExtend ? (int16_t)halfword_val : halfword_val;
             break;
         }
-        case 4: // Word
-            DM.Read_data = *((int32_t*)&MEM[DM.Address]);
+        case 4: // Word (32-bit)
+        {
+            DM.Read_data = MEM[DM.Address] |
+                            (MEM[DM.Address + 1] << 8) |
+                            (MEM[DM.Address + 2] << 16) |
+                            (MEM[DM.Address + 3] << 24);
             break;
+        }
+        }
+    }
+    else if (DM.MemWrite)
+    {
+        // Forwarding logic for store instructions
+        if (WB.RegWrite && WB.WriteReg == EX.WriteDataReg)
+        {
+            if (WB.MemtoReg)
+            {
+                switch (DM.MemSize)
+                {
+                case 1: // Store Byte
+                    MEM[DM.Address] = WB.Read_data & 0xFF;
+                    break;
+                case 2: // Store Halfword
+                    MEM[DM.Address]     = WB.Read_data & 0xFF;
+                    MEM[DM.Address + 1] = (WB.Read_data >> 8) & 0xFF;
+                    break;
+                case 4: // Store Word
+                    MEM[DM.Address]     = WB.Read_data & 0xFF;
+                    MEM[DM.Address + 1] = (WB.Read_data >> 8) & 0xFF;
+                    MEM[DM.Address + 2] = (WB.Read_data >> 16) & 0xFF;
+                    MEM[DM.Address + 3] = (WB.Read_data >> 24) & 0xFF;
+                    break;
+                }
+            }
+            else
+            {
+                switch (DM.MemSize)
+                {
+                case 1: // Store Byte
+                    MEM[DM.Address] = WB.ALU_res & 0xFF;
+                    break;
+                case 2: // Store Halfword
+                    MEM[DM.Address]     = WB.ALU_res & 0xFF;
+                    MEM[DM.Address + 1] = (WB.ALU_res >> 8) & 0xFF;
+                    break;
+                case 4: // Store Word
+                    MEM[DM.Address]     = WB.ALU_res & 0xFF;
+                    MEM[DM.Address + 1] = (WB.ALU_res >> 8) & 0xFF;
+                    MEM[DM.Address + 2] = (WB.ALU_res >> 16) & 0xFF;
+                    MEM[DM.Address + 3] = (WB.ALU_res >> 24) & 0xFF;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            // Original store logic
+            switch (DM.MemSize)
+            {
+            case 1: // Store Byte
+                MEM[DM.Address] = DM.Write_data & 0xFF;
+                break;
+            case 2: // Store Halfword
+                MEM[DM.Address]     = DM.Write_data & 0xFF;
+                MEM[DM.Address + 1] = (DM.Write_data >> 8) & 0xFF;
+                break;
+            case 4: // Store Word
+                MEM[DM.Address]     = DM.Write_data & 0xFF;
+                MEM[DM.Address + 1] = (DM.Write_data >> 8) & 0xFF;
+                MEM[DM.Address + 2] = (DM.Write_data >> 16) & 0xFF;
+                MEM[DM.Address + 3] = (DM.Write_data >> 24) & 0xFF;
+                break;
+            }
         }
     }
 }

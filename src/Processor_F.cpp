@@ -14,7 +14,9 @@ using namespace std;
 
 
 const int N = 2000005;
-int MEM[N];
+unsigned char MEM[N];
+
+#define int int32_t
 
 Register RegFile[32];
 IFStage IF;
@@ -280,7 +282,6 @@ void process_EX()
 
     if (loadHazard)
     {
-        // cout << "EX stage detected load-use hazard at instruction " << ID.InStr << ". Inserting bubble." << endl;
         EX.InStr = -1;
         ID.stall = true;
         return;
@@ -300,10 +301,9 @@ void process_EX()
     EX.MemSize = ID.MemSize;
     EX.MemSignExtend = ID.MemSignExtend;
 
-    // For store instructions, prepare the write data and check for forwarding.
     EX.WriteData = ID.RD2;
     EX.WriteDataReg = ID.RR2;
-    if (EX.MemWrite == true) // Forwarding for DM last-to-last instruction.
+    if (EX.MemWrite == true)
     {
         if (WB.RegWrite == true && WB.WriteReg == EX.WriteDataReg)
         {
@@ -398,6 +398,7 @@ void process_MEM()
     DM.MemSize = EX.MemSize;
     DM.MemSignExtend = EX.MemSignExtend;
 
+
     if (DM.MemRead)
     {
         // Load operations with different memory sizes and sign extension
@@ -406,32 +407,31 @@ void process_MEM()
         case 1: // Byte
         {
             uint8_t byte_val = MEM[DM.Address];
-            if (DM.MemSignExtend)
-                DM.Read_data = (int8_t)byte_val; // Sign extend
-            else
-                DM.Read_data = byte_val; // Zero extend
+            DM.Read_data = DM.MemSignExtend ? (int8_t)byte_val : byte_val;
             break;
         }
-        case 2: // Halfword
+        case 2: // Halfword (16-bit)
         {
-            uint16_t halfword_val = *((uint16_t*)&MEM[DM.Address]);
-            if (DM.MemSignExtend)
-                DM.Read_data = (int16_t)halfword_val; // Sign extend
-            else
-                DM.Read_data = halfword_val; // Zero extend
+            uint16_t halfword_val = MEM[DM.Address] | (MEM[DM.Address + 1] << 8);
+            DM.Read_data = DM.MemSignExtend ? (int16_t)halfword_val : halfword_val;
             break;
         }
-        case 4: // Word
-            DM.Read_data = *((int32_t*)&MEM[DM.Address]);
+        case 4: // Word (32-bit)
+        {
+            DM.Read_data = MEM[DM.Address] |
+                            (MEM[DM.Address + 1] << 8) |
+                            (MEM[DM.Address + 2] << 16) |
+                            (MEM[DM.Address + 3] << 24);
             break;
+        }
         }
     }
-    else if (DM.MemWrite == true)
+    else if (DM.MemWrite)
     {
-        // Restore the original forwarding logic for store instructions
-        if (WB.RegWrite == true && WB.WriteReg == EX.WriteDataReg)
-        { // previous instruction
-            if (WB.MemtoReg == true)
+        // Forwarding logic for store instructions
+        if (WB.RegWrite && WB.WriteReg == EX.WriteDataReg)
+        {
+            if (WB.MemtoReg)
             {
                 switch (DM.MemSize)
                 {
@@ -439,10 +439,14 @@ void process_MEM()
                     MEM[DM.Address] = WB.Read_data & 0xFF;
                     break;
                 case 2: // Store Halfword
-                    *((uint16_t*)&MEM[DM.Address]) = WB.Read_data & 0xFFFF;
+                    MEM[DM.Address]     = WB.Read_data & 0xFF;
+                    MEM[DM.Address + 1] = (WB.Read_data >> 8) & 0xFF;
                     break;
                 case 4: // Store Word
-                    *((int32_t*)&MEM[DM.Address]) = WB.Read_data;
+                    MEM[DM.Address]     = WB.Read_data & 0xFF;
+                    MEM[DM.Address + 1] = (WB.Read_data >> 8) & 0xFF;
+                    MEM[DM.Address + 2] = (WB.Read_data >> 16) & 0xFF;
+                    MEM[DM.Address + 3] = (WB.Read_data >> 24) & 0xFF;
                     break;
                 }
             }
@@ -454,10 +458,14 @@ void process_MEM()
                     MEM[DM.Address] = WB.ALU_res & 0xFF;
                     break;
                 case 2: // Store Halfword
-                    *((uint16_t*)&MEM[DM.Address]) = WB.ALU_res & 0xFFFF;
+                    MEM[DM.Address]     = WB.ALU_res & 0xFF;
+                    MEM[DM.Address + 1] = (WB.ALU_res >> 8) & 0xFF;
                     break;
                 case 4: // Store Word
-                    *((int32_t*)&MEM[DM.Address]) = WB.ALU_res;
+                    MEM[DM.Address]     = WB.ALU_res & 0xFF;
+                    MEM[DM.Address + 1] = (WB.ALU_res >> 8) & 0xFF;
+                    MEM[DM.Address + 2] = (WB.ALU_res >> 16) & 0xFF;
+                    MEM[DM.Address + 3] = (WB.ALU_res >> 24) & 0xFF;
                     break;
                 }
             }
@@ -471,10 +479,14 @@ void process_MEM()
                 MEM[DM.Address] = DM.Write_data & 0xFF;
                 break;
             case 2: // Store Halfword
-                *((uint16_t*)&MEM[DM.Address]) = DM.Write_data & 0xFFFF;
+                MEM[DM.Address]     = DM.Write_data & 0xFF;
+                MEM[DM.Address + 1] = (DM.Write_data >> 8) & 0xFF;
                 break;
             case 4: // Store Word
-                *((int32_t*)&MEM[DM.Address]) = DM.Write_data;
+                MEM[DM.Address]     = DM.Write_data & 0xFF;
+                MEM[DM.Address + 1] = (DM.Write_data >> 8) & 0xFF;
+                MEM[DM.Address + 2] = (DM.Write_data >> 16) & 0xFF;
+                MEM[DM.Address + 3] = (DM.Write_data >> 24) & 0xFF;
                 break;
             }
         }

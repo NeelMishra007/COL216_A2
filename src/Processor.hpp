@@ -1,5 +1,8 @@
 #ifndef PROCESSOR_HPP
 #define PROCESSOR_HPP
+#include <cstdint>
+
+#define int int32_t
 
 typedef struct
 {
