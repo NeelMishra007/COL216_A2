@@ -599,26 +599,27 @@ void Decoder_NF(IFStage &IF, IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB
         else if (opcode == "1101111")
     {
         ID.WR = stoi(instr.substr(20, 5), nullptr, 2); // rd
+        // Extract the 20-bit immediate: imm[20|19:12|11|10:1]
         string imm_str = instr.substr(0, 1) + instr.substr(12, 8) + instr.substr(11, 1) + instr.substr(1, 10);
         int32_t imm_val = stoi(imm_str, nullptr, 2);
         if (imm_str[0] == '1')
         {
-            imm_val |= 0xFFE00000;
+            imm_val -= (1 << 20); // Correctly sign-extend by subtracting 2^20
         }
-        ID.Imm = imm_val << 1; // Shift left by 1 for JAL
+        ID.Imm = imm_val << 1; // Shift left by 1 to get byte offset
         if (ID.WR != 0)
-        RegFile[ID.WR].value = IF.PC; // Save the return address in rd
-        //cout << ID.Imm << endl;
-        IF.branchPC = IF.PC + ID.Imm/4 -1; // Set jump target
+            RegFile[ID.WR].value = IF.PC; // Save the return address in rd
+        cout << ID.Imm << endl;
+        IF.branchPC = IF.PC + ID.Imm / 4 - 1; // Set jump target (instruction index)
         IF.branch = 1;
-
+    
         ID.RegWrite = false;
         ID.Jump = false;
         ID.Branch = false;
         ID.MemRead = false;
         ID.MemWrite = false;
-        ID.ALUSrc = false; // Not used
-        ID.ALUOp = 0; // No ALU op needed, or 2 if ALU computes PC+4 elsewhere
+        ID.ALUSrc = false;
+        ID.ALUOp = 0; // No ALU op needed
         ID.MemtoReg = false;
         ID.JumpAndLink = false; // Optional
     }

@@ -152,8 +152,20 @@ int main(int argc, char **argv)
 
         //cout << "Cycle " << cycle << ": IF:" << IF.InStr << " ID:" << ID.InStr << " EX:" << EX.InStr << " MEM:" << DM.InStr << " WB:" << WB.InStr << endl;
     }
+    string output_filename = "../outputfiles/_noforward out.txt.txt.txt";
+    ofstream outfile(output_filename);
+    if (!outfile) {
+        cerr << "Error: Unable to open output file " << output_filename << endl;
+        return 1;
+    }
+    
+    // Redirect cout to the file
+    streambuf* orig_cout = cout.rdbuf(outfile.rdbuf());
+    
+    // Rest of the code remains the same...
+    
     for (int i = 0; i < total_instructions; i++) {
-        cout << instructions_print[i];
+        outfile << instructions_print[i];
         int lastCycle = -1;
         for (int cycle = 0; cycle < numCycles; cycle++) {
             if (Output[i][cycle] != -1) {
@@ -166,14 +178,19 @@ int main(int argc, char **argv)
             else if (Output[i][cycle] != -1) flag = false;
             
             if (Output[i][cycle] == 5) {
-                cout << ";" << "WB";
+                outfile << ";" << "WB";
             }
-            else if (flag) cout << ";" << " ";
-            else if (Output[i][cycle] == -1 || Output[i][cycle] == Output[i][cycle - 1]) cout << ";" << "-";
-            else cout << ";" << stageName(Output[i][cycle]);
+            else if (flag) outfile << ";" << " ";
+            else if (Output[i][cycle] == -1 || Output[i][cycle] == Output[i][cycle - 1]) outfile << ";" << "-";
+            else outfile << ";" << stageName(Output[i][cycle]);
         }
-        cout << endl;
+        outfile << endl;
     }
+    
+    // Restore original cout
+    cout.rdbuf(orig_cout);
+    outfile.close();
+
 }
 void process_IF(const vector<string> &instructions)
 {
