@@ -145,7 +145,7 @@ int main(int argc, char **argv)
             Output[IF.InStr][cycle] = 1;
         }
 
-        cout << "Cycle " << cycle << ": IF:" << IF.InStr << " ID:" << ID.InStr << " EX:" << EX.InStr << " MEM:" << DM.InStr << " WB:" << WB.InStr << endl;
+        //cout << "Cycle " << cycle << ": IF:" << IF.InStr << " ID:" << ID.InStr << " EX:" << EX.InStr << " MEM:" << DM.InStr << " WB:" << WB.InStr << endl;
     }
     string output_filename = "../outputfiles/_noforward_out.txt";
     ofstream outfile(output_filename);
@@ -272,7 +272,7 @@ void process_EX()
     EX.InStr = ID.InStr;
     EX.WriteReg = ID.WR;
 
-    cout << EX.WriteReg << endl;
+    //cout << EX.WriteReg << endl;
     EX.Branch = ID.Branch;
     EX.Jump = ID.Jump;
     EX.MemRead = ID.MemRead;
@@ -469,10 +469,10 @@ void process_WB()
     WB.ALU_res = DM.ALU_res;
     WB.WriteReg = DM.WriteReg;
 
-    if (WB.RegWrite)
-    {
-        RegFile[WB.WriteReg].value = (WB.MemtoReg ? WB.Read_data : WB.ALU_res);
+    //if (WB.RegWrite)
+    //{
+        //RegFile[WB.WriteReg].value = (WB.MemtoReg ? WB.Read_data : WB.ALU_res);
         //cout << WB.WriteReg << " " << RegFile[WB.WriteReg].value << endl;
         
-    }
+    //}
 }

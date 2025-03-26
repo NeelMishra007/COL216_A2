@@ -16,7 +16,6 @@ using namespace std;
 const int N = 2000005;
 unsigned char MEM[N];
 
-#define int int32_t
 
 Register RegFile[32];
 IFStage IF;
@@ -149,7 +148,7 @@ int main(int argc, char **argv)
             Output[IF.InStr][cycle] = 1;
         }
 
-        cout << "Cycle " << cycle << ": IF:" << IF.InStr << " ID:" << ID.InStr << " EX:" << EX.InStr << " MEM:" << DM.InStr << " WB:" << WB.InStr << endl;
+        //cout << "Cycle " << cycle << ": IF:" << IF.InStr << " ID:" << ID.InStr << " EX:" << EX.InStr << " MEM:" << DM.InStr << " WB:" << WB.InStr << endl;
     }
     string output_filename = "../outputfiles/_forward_out.txt";
     ofstream outfile(output_filename);

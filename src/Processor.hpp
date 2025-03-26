@@ -2,8 +2,6 @@
 #define PROCESSOR_HPP
 #include <cstdint>
 
-#define int int32_t
-
 typedef struct
 {
     int value;
@@ -72,8 +70,8 @@ struct EXStage
     bool MemWrite;
     bool MemtoReg;
     bool RegWrite;
-    int MemSize;        // Size of memory access (1, 2, or 4 bytes)
-    bool MemSignExtend; // Whether to sign-extend memory reads
+    int MemSize;      
+    bool MemSignExtend; 
 
     int InStr;
 

@@ -594,8 +594,9 @@ void Decoder_NF(IFStage &IF, IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB
             //cout << "Unknown branch type encountered!" << endl;
             break;
         }
-        if (IF.branch == 1)
-            IF.branchPC = IF.PC + (ID.Imm / 4) - 1;
+        IF.branch = 0;
+        //if (IF.branch == 1)
+            //IF.branchPC = IF.PC + (ID.Imm / 4) - 1;
             //cout << "yes" << " " << IF.branchPC << endl;
     }
     // J-type: JAL (Jump and Link)
@@ -610,9 +611,9 @@ void Decoder_NF(IFStage &IF, IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB
             imm_val -= (1 << 20); // Correctly sign-extend by subtracting 2^20
         }
         ID.Imm = imm_val << 1; // Shift left by 1 to get byte offset
-        if (ID.WR != 0)
-            RegFile[ID.WR].value = IF.PC; // Save the return address in rd
-        cout << ID.Imm << endl;
+        //if (ID.WR != 0)
+            //RegFile[ID.WR].value = IF.PC; // Save the return address in rd
+        //cout << ID.Imm << endl;
         IF.branchPC = IF.PC + ID.Imm / 4 - 1; // Set jump target (instruction index)
         IF.branch = 1;
     
@@ -624,7 +625,6 @@ void Decoder_NF(IFStage &IF, IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB
         ID.ALUSrc = false;
         ID.ALUOp = 0; // No ALU op needed
         ID.MemtoReg = false;
-        ID.JumpAndLink = false; // Optional
         return;
     }
     else if (opcode == "1100111" && instr.substr(17, 3) == "000")
@@ -641,8 +641,8 @@ void Decoder_NF(IFStage &IF, IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB
         //cout << ID.Imm << "gi" << endl;
         IF.branchPC = RegFile[ID.RR1].value + ID.Imm/4; // Jump target
         IF.branch = 1;
-        if (ID.WR != 0)
-        RegFile[ID.WR].value = IF.PC; // Save the return address in rd
+        //if (ID.WR != 0)
+        //RegFile[ID.WR].value = IF.PC; // Save the return address in rd
 
         ID.RegWrite = false;  // Write PC + 4 to rd
         ID.Jump = false;      // Jump instruction
@@ -652,12 +652,10 @@ void Decoder_NF(IFStage &IF, IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB
         ID.ALUSrc = false;    // ALU uses immediate
         ID.ALUOp = 0;        // Addition for rs1 + imm
         ID.MemtoReg = false;
-        ID.JumpAndLink = false; // Optional, for consistency with JAL
-        ID.JumpReg = false;   // Optional, to indicate register-based jump
         return;
     }
     if (EX.RegWrite && (ID.RR1 == EX.WriteReg || ID.RR2 == EX.WriteReg) || DM.RegWrite && (ID.RR1 == DM.WriteReg || ID.RR2 == DM.WriteReg)) {
-        cout << ID.RR1 << " " << ID.RR2 << " " << EX.WriteReg << " " << DM.WriteReg << endl;
+        //cout << ID.RR1 << " " << ID.RR2 << " " << EX.WriteReg << " " << DM.WriteReg << endl;
         ID.InStr = -1;
         IF.stall = true;
     }

@@ -4,7 +4,6 @@
 #include <cstdint>
 using namespace std;
 
-#define int int32_t
 
 void Decoder_F(string opcode, string instr)
 {
@@ -624,8 +623,9 @@ void Decoder_F(string opcode, string instr)
             cout << "Unknown branch type encountered!" << endl;
             break;
         }
-        if (IF.branch == 1)
-            IF.branchPC = IF.PC + (ID.Imm / 4) - 1;
+        IF.branch = 0;
+        //if (IF.branch == 1)
+            //IF.branchPC = IF.PC + (ID.Imm / 4) - 1;
             //cout << "yes" << " " << IF.branchPC << endl;
     }
     // J-type: JAL (Jump and Link)
@@ -640,9 +640,9 @@ void Decoder_F(string opcode, string instr)
             imm_val -= (1 << 20); // Correctly sign-extend by subtracting 2^20
         }
         ID.Imm = imm_val << 1; // Shift left by 1 to get byte offset
-        if (ID.WR != 0)
-            RegFile[ID.WR].value = IF.PC; // Save the return address in rd
-        cout << ID.Imm << endl;
+        //if (ID.WR != 0)
+            //RegFile[ID.WR].value = IF.PC; // Save the return address in rd
+        //cout << ID.Imm << endl;
         IF.branchPC = IF.PC + ID.Imm / 4 - 1; // Set jump target (instruction index)
         IF.branch = 1;
     
@@ -670,8 +670,8 @@ void Decoder_F(string opcode, string instr)
         //cout << ID.Imm << "gi" << endl;
         IF.branchPC = RegFile[ID.RR1].value + ID.Imm/4; // Jump target
         IF.branch = 1;
-        if (ID.WR != 0)
-        RegFile[ID.WR].value = IF.PC; // Save the return address in rd
+        //if (ID.WR != 0)
+        //RegFile[ID.WR].value = IF.PC; // Save the return address in rd
 
         ID.RegWrite = false;  // Write PC + 4 to rd
         ID.Jump = false;      // Jump instruction
