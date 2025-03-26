@@ -65,10 +65,74 @@ void process_WB();
 int main(int argc, char **argv)
 {
     IF = {0, false, -1, -1, -1};
-    ID = {.RR1 = 0, .RR2 = 0, .WR = 0, .RD1 = 0, .RD2 = 0, .Imm = 0, .RegWrite = false, .RegDst = false, .Branch = false, .Jump = false, .MemRead = false, .MemWrite = false, .ALUSrc = false, .ALUOp = 0, .MemtoReg = false, .stall = false, .InStr = -1, .DM_stall_prev = 0};
-    EX = {0, false, 0, 0, 0, false, false, false, false, false, false, -1, false};
-    DM = {0, 0, 0, false, false, false, false, 0, 0, -1, false};
-    WB = {false, false, 0, 0, 0, -1, false};
+    ID = {
+        .RR1 = 0, 
+        .RR2 = 0, 
+        .WR = 0, 
+        .RD1 = 0, 
+        .RD2 = 0, 
+        .Imm = 0, 
+        .RegWrite = false, 
+        .RegDst = false, 
+        .Branch = false, 
+        .Jump = false, 
+        .MemRead = false, 
+        .MemWrite = false, 
+        .ALUSrc = false, 
+        .ALUOp = 0, 
+        .MemtoReg = false, 
+        .MemSize = 0,
+        .MemSignExtend = false,
+        .BranchType = 0,
+        .JumpAndLink = false,
+        .JumpReg = false,
+        .stall = false, 
+        .InStr = -1, 
+        .DM_stall_prev = 0,
+        .ALU_stall_prev = false,
+        .DM_stall_prev2 = false
+    };
+    EX = {
+        .ALU_res = 0, 
+        .Zero = false, 
+        .WriteData = 0, 
+        .WriteDataReg = 0, 
+        .WriteReg = 0, 
+        .Branch = false, 
+        .Jump = false, 
+        .MemRead = false, 
+        .MemWrite = false, 
+        .MemtoReg = false, 
+        .RegWrite = false,
+        .MemSize = 0,
+        .MemSignExtend = false,
+        .InStr = -1, 
+        .stall = false
+    };
+    DM = {
+        .Address = 0, 
+        .Write_data = 0, 
+        .Read_data = 0, 
+        .MemRead = false, 
+        .MemWrite = false, 
+        .MemtoReg = false, 
+        .RegWrite = false, 
+        .ALU_res = 0, 
+        .WriteReg = 0,
+        .MemSize = 0,
+        .MemSignExtend = false,
+        .InStr = -1, 
+        .stall = false
+    };
+    WB = {
+        .MemtoReg = false, 
+        .RegWrite = false, 
+        .Read_data = 0, 
+        .ALU_res = 0, 
+        .WriteReg = 0, 
+        .InStr = -1, 
+        .stall = false
+    };
     if (argc < 3)
     {
         cerr << "Usage: " << argv[0] << " <input.txt> <num_cycles>" << endl;
