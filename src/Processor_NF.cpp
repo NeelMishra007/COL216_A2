@@ -14,9 +14,6 @@ using namespace std;
 const int N = 2000005;
 unsigned char MEM[N];
 
-#define int int32_t
-
-
 Register RegFile[32];
 IFStage IF;
 IDStage ID;
