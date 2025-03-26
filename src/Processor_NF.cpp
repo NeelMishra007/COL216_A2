@@ -577,10 +577,10 @@ void process_WB()
     WB.ALU_res = DM.ALU_res;
     WB.WriteReg = DM.WriteReg;
 
-    //if (WB.RegWrite)
-    //{
-        //RegFile[WB.WriteReg].value = (WB.MemtoReg ? WB.Read_data : WB.ALU_res);
-        //cout << WB.WriteReg << " " << RegFile[WB.WriteReg].value << endl;
+    if (WB.RegWrite)
+    {
+        RegFile[WB.WriteReg].value = (WB.MemtoReg ? WB.Read_data : WB.ALU_res);
+        cout << WB.WriteReg << " " << RegFile[WB.WriteReg].value << endl;
         
-    //}
+    }
 }
