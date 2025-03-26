@@ -14,8 +14,7 @@ using namespace std;
 
 
 const int N = 2000005;
-unsigned char MEM[N];
-
+vector<unsigned char> MEM(N, 0);
 
 Register RegFile[32];
 IFStage IF;
@@ -491,7 +490,7 @@ void process_MEM()
     }
     else if (DM.MemWrite)
     {
-        // Forwarding logic for store instructions
+        //cout << "hi2" << endl;
         if (WB.RegWrite && WB.WriteReg == EX.WriteDataReg)
         {
             if (WB.MemtoReg)
@@ -500,6 +499,7 @@ void process_MEM()
                 {
                 case 1: // Store Byte
                     MEM[DM.Address] = WB.Read_data & 0xFF;
+                    //cout << "hi3" << endl;
                     break;
                 case 2: // Store Halfword
                     MEM[DM.Address]     = WB.Read_data & 0xFF;
@@ -519,6 +519,7 @@ void process_MEM()
                 {
                 case 1: // Store Byte
                     MEM[DM.Address] = WB.ALU_res & 0xFF;
+                    //cout << DM.Address << " " << (WB.ALU_res & 0xFF) << endl;
                     break;
                 case 2: // Store Halfword
                     MEM[DM.Address]     = WB.ALU_res & 0xFF;
@@ -540,6 +541,7 @@ void process_MEM()
             {
             case 1: // Store Byte
                 MEM[DM.Address] = DM.Write_data & 0xFF;
+                //cout << "hi" << endl;
                 break;
             case 2: // Store Halfword
                 MEM[DM.Address]     = DM.Write_data & 0xFF;
