@@ -12,7 +12,7 @@
 using namespace std;
 
 const int N = 2000005;
-unsigned char MEM[N];
+vector<unsigned char> MEM(N, 0);
 
 Register RegFile[32];
 IFStage IF;

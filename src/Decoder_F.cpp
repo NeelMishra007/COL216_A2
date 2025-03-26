@@ -381,6 +381,163 @@ void Decoder_F(string opcode, string instr)
             ID.MemtoReg = false;
         }
     }
+    // LUI: Load Upper Immediate (U-type instruction)
+    else if (opcode == "0110111")
+    {
+        // Extract the destination register
+        ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
+
+        // Extract the 20-bit immediate and shift left by 12 bits
+        string imm_str = instr.substr(0, 20);
+        int32_t imm_val = stoi(imm_str, nullptr, 2) << 12;
+        ID.Imm = imm_val;
+
+        ID.RegWrite = true;
+        ID.RegDst = false;
+        ID.Branch = false;
+        ID.Jump = false;
+        ID.MemRead = false;
+        ID.MemWrite = false;
+        ID.ALUSrc = true;  // Uses immediate value
+        ID.ALUOp = 20;     // LUI operation (likely pass immediate)
+        ID.MemtoReg = false;
+    }
+    else if (opcode == "0110011" && instr.substr(0, 7) == "0000001")
+    {
+        // MUL: funct3 = 000
+        if (instr.substr(17, 3) == "000")
+        {
+            ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
+            ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.RegWrite = true;
+            ID.RegDst = true;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = false;
+            ID.ALUOp = 12; // MUL
+            ID.MemtoReg = false;
+        }
+        // MULH: Signed x Signed, Upper product, funct3 = 001
+        else if (instr.substr(17, 3) == "001")
+        {
+            ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
+            ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.RegWrite = true;
+            ID.RegDst = true;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = false;
+            ID.ALUOp = 13; // MULH
+            ID.MemtoReg = false;
+        }
+        // MULHU: Unsigned x Unsigned, Upper product, funct3 = 011
+        else if (instr.substr(17, 3) == "011")
+        {
+            ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
+            ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.RegWrite = true;
+            ID.RegDst = true;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = false;
+            ID.ALUOp = 14; // MULHU
+            ID.MemtoReg = false;
+        }
+        // MULHSU: Signed x Unsigned, Upper product, funct3 = 010
+        else if (instr.substr(17, 3) == "010")
+        {
+            ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
+            ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.RegWrite = true;
+            ID.RegDst = true;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = false;
+            ID.ALUOp = 15; // MULHSU
+            ID.MemtoReg = false;
+        }
+    }
+    // Division and Remainder Instructions 
+    // (R-type, opcode = 0110011, funct7 = 0000001)
+    else if (opcode == "0110011" && instr.substr(0, 7) == "0000001")
+    {
+        // DIV: Signed division, funct3 = 100
+        if (instr.substr(17, 3) == "100")
+        {
+            ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
+            ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.RegWrite = true;
+            ID.RegDst = true;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = false;
+            ID.ALUOp = 16; // DIV
+            ID.MemtoReg = false;
+        }
+        // DIVU: Unsigned division, funct3 = 101
+        else if (instr.substr(17, 3) == "101")
+        {
+            ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
+            ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.RegWrite = true;
+            ID.RegDst = true;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = false;
+            ID.ALUOp = 17; // DIVU
+            ID.MemtoReg = false;
+        }
+        // REM: Signed remainder, funct3 = 110
+        else if (instr.substr(17, 3) == "110")
+        {
+            ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
+            ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.RegWrite = true;
+            ID.RegDst = true;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = false;
+            ID.ALUOp = 18; // REM
+            ID.MemtoReg = false;
+        }
+        // REMU: Unsigned remainder, funct3 = 111
+        else if (instr.substr(17, 3) == "111")
+        {
+            ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
+            ID.RR2 = stoi(instr.substr(7, 5), nullptr, 2);
+            ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
+            ID.RegWrite = true;
+            ID.RegDst = true;
+            ID.Branch = false;
+            ID.Jump = false;
+            ID.MemRead = false;
+            ID.MemWrite = false;
+            ID.ALUSrc = false;
+            ID.ALUOp = 19; // REMU
+            ID.MemtoReg = false;
+        }
+    }
     // I-type load instructions
     else if (opcode == "0000011")
     {
