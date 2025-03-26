@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 0:  00000293  addi x5, x0, 0
 8:  00030283  lb x5, 0(x6)   # Modified instruction
 4:  00a28333  add x6, x5, x10
@@ -6,3 +7,13 @@ c:  00030663  beq x6, x0, 12
 14: ff1ff06f  jal x0, -16
 18: 00028513  addi x10, x5, 0
 1c: 00008067  jalr x0, x1, 0
+=======
+0: 00000293 addi x5 x0 0
+4: 00a28333 add x6 x5 x10
+8: 00030303 lb x6 0 x6
+c: 00030663 beq x6 x0 12
+10: 00128293 addi x5 x5 1
+18: 00028513 addi x10 x5 0
+1c: 00008067 jalr x0 x1 0
+8: 00030303 lb x6 0 x6
+>>>>>>> e210629535aca3f9a9083a4117a224d5a9ccbd5b
