@@ -352,28 +352,28 @@ void process_EX()
     
     switch (ID.ALUOp)
     {
-    case 2:  // ADD (also used for address calculation)
+    case 2: // ADD (also used for address calculation)
         EX.ALU_res = arg1 + arg2;
         break;
-    case 3:  // SUB
+    case 3: // SUB
         EX.ALU_res = arg1 - arg2;
         break;
-    case 4:  // AND
+    case 4: // AND
         EX.ALU_res = arg1 & arg2;
         break;
-    case 5:  // OR
+    case 5: // OR
         EX.ALU_res = arg1 | arg2;
         break;
-    case 6:  // XOR
+    case 6: // XOR
         EX.ALU_res = arg1 ^ arg2;
         break;
-    case 7:  // SLL (Shift Left Logical)
+    case 7: // SLL (Shift Left Logical)
         EX.ALU_res = arg1 << arg2;
         break;
-    case 8:  // SRL (Shift Right Logical)
+    case 8: // SRL (Shift Right Logical)
         EX.ALU_res = (unsigned int)arg1 >> arg2;
         break;
-    case 9:  // SRA (Shift Right Arithmetic)
+    case 9: // SRA (Shift Right Arithmetic)
         EX.ALU_res = arg1 >> arg2;
         break;
     case 10: // SLT (Set Less Than, signed)
@@ -381,6 +381,53 @@ void process_EX()
         break;
     case 11: // SLTU (Set Less Than Unsigned)
         EX.ALU_res = ((unsigned int)arg1 < (unsigned int)arg2) ? 1 : 0;
+        break;
+    case 12: // MUL (Signed multiplication, lower 32 bits)
+        EX.ALU_res = (int32_t)(arg1 * arg2);
+        break;
+    case 13: // MULH (Signed x Signed, upper 32 bits)
+        EX.ALU_res = (int32_t)((int64_t)arg1 * (int64_t)arg2 >> 32);
+        break;
+    case 14: // MULHU (Unsigned x Unsigned, upper 32 bits)
+        EX.ALU_res = (uint32_t)((uint64_t)arg1 * (uint64_t)arg2 >> 32);
+        break;
+    case 15: // MULHSU (Signed x Unsigned, upper 32 bits)
+        EX.ALU_res = (int32_t)((int64_t)arg1 * (uint64_t)arg2 >> 32);
+        break;
+    case 16: // DIV (Signed division)
+        if (arg2 == 0) {
+            // Handle division by zero (implementation-specific)
+            EX.ALU_res = -1; // or some other error value
+        } else {
+            EX.ALU_res = arg1 / arg2;
+        }
+        break;
+    case 17: // DIVU (Unsigned division)
+        if (arg2 == 0) {
+            // Handle division by zero (implementation-specific)
+            EX.ALU_res = (unsigned int)-1; // or some other error value
+        } else {
+            EX.ALU_res = (unsigned int)arg1 / (unsigned int)arg2;
+        }
+        break;
+    case 18: // REM (Signed remainder)
+        if (arg2 == 0) {
+            // Handle division by zero (implementation-specific)
+            EX.ALU_res = arg1; // or some other error value
+        } else {
+            EX.ALU_res = arg1 % arg2;
+        }
+        break;
+    case 19: // REMU (Unsigned remainder)
+        if (arg2 == 0) {
+            // Handle division by zero (implementation-specific)
+            EX.ALU_res = (unsigned int)arg1; // or some other error value
+        } else {
+            EX.ALU_res = (unsigned int)arg1 % (unsigned int)arg2;
+        }
+        break;
+    case 20: // LUI (Load Upper Immediate)
+        EX.ALU_res = arg2; // Pass through immediate value
         break;
     default:
         EX.ALU_res = arg1 + arg2;
