@@ -201,7 +201,7 @@ int main(int argc, char **argv)
         {
             Output[IF.PC][cycle] = 1;
         }
-        cout << "Cycle " << cycle << ": IF:" << IF.PC << " ID:" << IF.InStr << " EX:" << ID.InStr << " MEM:" << EX.InStr << " WB:" << DM.InStr << endl;
+        //cout << "Cycle " << cycle << ": IF:" << IF.PC << " ID:" << IF.InStr << " EX:" << ID.InStr << " MEM:" << EX.InStr << " WB:" << DM.InStr << endl;
         process_WB();
         process_MEM();
         process_EX();
@@ -388,7 +388,7 @@ void process_IF(const vector<string> &instructions)
             IF.PC-=1;
             IF.branch = 2;
             IF.InStr = -1;
-            cout << "bye";
+            //cout << "bye";
         }
         if (IF.branch == 1)
         {
@@ -695,7 +695,7 @@ void process_WB()
     if (WB.RegWrite)
     {
         RegFile[WB.WriteReg].value = (WB.MemtoReg ? WB.Read_data : WB.ALU_res);
-        cout << WB.WriteReg << " " << RegFile[WB.WriteReg].value << endl;
+        //cout << WB.WriteReg << " " << RegFile[WB.WriteReg].value << endl;
         
     }
 }
