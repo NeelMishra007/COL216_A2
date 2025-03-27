@@ -5,6 +5,7 @@
 using namespace std;
 
 void Decoder_NF(IFStage &IF, IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB, string opcode, string instr) {
+    bool temp = false;
     if (opcode == "0110011")
     {
         // ADD: opcode = 0110011, funct7 = 0000000, funct3 = 000
@@ -776,19 +777,20 @@ void Decoder_NF(IFStage &IF, IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB
             imm_val -= (1 << 20); // Correctly sign-extend by subtracting 2^20
         }
         ID.Imm = imm_val << 1; // Shift left by 1 to get byte offset
-        if (ID.WR != 0)
-            RegFile[ID.WR].value = IF.PC; // Save the return address in rd
+        // if (ID.WR != 0)
+        //     RegFile[ID.WR].value = IF.PC; // Save the return address in rd
         //cout << ID.Imm << endl;
         IF.branchPC = IF.PC + ID.Imm / 4 - 1; // Set jump target (instruction index)
         IF.branch = 1;
     
-        ID.RegWrite = false;
+        temp = true;
+        ID.RegWrite = true;
         ID.Jump = false;
         ID.Branch = false;
         ID.MemRead = false;
         ID.MemWrite = false;
-        ID.ALUSrc = false;
-        ID.ALUOp = 0; // No ALU op needed
+        ID.ALUSrc = true;
+        ID.ALUOp = 2; // No ALU op needed
         ID.MemtoReg = false;
         return;
     }
@@ -807,16 +809,16 @@ void Decoder_NF(IFStage &IF, IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB
         //cout << ID.Imm << "gi" << endl;
         IF.branchPC = (RegFile[ID.RR1].value + ID.Imm)/4;  // Jump target
         IF.branch = 1;
-        if (ID.WR != 0)
-            RegFile[ID.WR].value = IF.PC; // Save the return address in rd
-
-        ID.RegWrite = false;  // Write PC + 4 to rd
+        // if (ID.WR != 0)
+        //     RegFile[ID.WR].value = IF.PC; // Save the return address in rd
+        temp =true;
+        ID.RegWrite = true;  // Write PC + 4 to rd
         ID.Jump = false;      // Jump instruction
         ID.Branch = false;
         ID.MemRead = false;
         ID.MemWrite = false;
-        ID.ALUSrc = false;    // ALU uses immediate
-        ID.ALUOp = 0;        // Addition for rs1 + imm
+        ID.ALUSrc = true;    // ALU uses immediate
+        ID.ALUOp = 2;        // Addition for rs1 + imm
         ID.MemtoReg = false;
         return;
     }
@@ -827,6 +829,10 @@ void Decoder_NF(IFStage &IF, IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB
     }
     ID.RD1 = RegFile[max(0, ID.RR1)].value;
     ID.RD2 = RegFile[max(0, ID.RR2)].value;
+    if (temp){    // wb of jal jalr
+        ID.Imm = 0;
+        ID.RD1 = IF.PC; 
+    }
     //cout << ID.RR1 << " " << ID.RR2 << " " << EX.WriteReg << " " << DM.WriteReg << endl;
     if (ID.WR == 0) ID.RegWrite = false;
 }
