@@ -190,38 +190,62 @@ int main(int argc, char **argv)
 
     for (int cycle = 0; cycle < numCycles+3; cycle++)
     {
+        // process_WB();
+        // if (WB.InStr != -1 && WB.InStr < total_instructions)
+        // {
+        //     Output[WB.InStr][cycle] = 5;
+        // }
+        
+        // process_MEM();
+        // if (DM.InStr != -1 && DM.InStr < total_instructions)
+        // {
+        //     Output[DM.InStr][cycle] = 4;
+        // }
 
-        process_WB();
-        if (WB.InStr != -1 && WB.InStr < total_instructions)
-        {
-            Output[WB.InStr][cycle] = 5;
-        }
+        // process_EX();
+        // if (EX.InStr != -1 && EX.InStr < total_instructions)
+        // {
+        //     Output[EX.InStr][cycle] = 3;
+        // }
 
-        process_MEM();
+        // process_ID(instructions_hex);
+        // if (ID.InStr != -1 && ID.InStr < total_instructions)
+        // {
+        //     Output[ID.InStr][cycle] = 2;
+        // }
+
+        // process_IF(instructions_hex);
+        // if (IF.InStr != -1 && IF.InStr < total_instructions)
+        // {
+        //     Output[IF.InStr][cycle] = 1;
+        // }
         if (DM.InStr != -1 && DM.InStr < total_instructions)
         {
-            Output[DM.InStr][cycle] = 4;
+            Output[DM.InStr][cycle] = 5;
         }
-
-        process_EX();
         if (EX.InStr != -1 && EX.InStr < total_instructions)
         {
-            Output[EX.InStr][cycle] = 3;
+            Output[EX.InStr][cycle] = 4;
         }
-
-        process_ID(instructions_hex);
         if (ID.InStr != -1 && ID.InStr < total_instructions)
         {
-            Output[ID.InStr][cycle] = 2;
+            Output[ID.InStr][cycle] = 3;
         }
-
-        process_IF(instructions_hex);
         if (IF.InStr != -1 && IF.InStr < total_instructions)
         {
-            Output[IF.InStr][cycle] = 1;
+            Output[IF.InStr][cycle] = 2;
         }
+        if (IF.PC != -1 && IF.PC< total_instructions)
+        {
+            Output[IF.PC][cycle] = 1;
+        }
+        cout << "Cycle " << cycle << ": IF:" << IF.PC << " ID:" << IF.InStr << " EX:" << ID.InStr << " MEM:" << EX.InStr << " WB:" << DM.InStr << endl;
+        process_WB();
+        process_MEM();
+        process_EX();
+        process_ID(instructions_hex);
+        process_IF(instructions_hex);
 
-        // cout << "Cycle " << cycle << ": IF:" << IF.InStr << " ID:" << ID.InStr << " EX:" << EX.InStr << " MEM:" << DM.InStr << " WB:" << WB.InStr << endl;
     }
     string output_filename = "../outputfiles/_forward_out.txt";
     ofstream outfile(output_filename);
@@ -363,25 +387,28 @@ void process_IF(const vector<string> &instructions)
         IF.InStr = -1;
     if (IF.branch == 2)
     {
-        IF.PC -= 1;
         IF.InStr = IF.PC;
         IF.branch = -1;
     }
     if (IF.branch == 3)
     {
-        IF.PC = IF.branchPC;
         IF.InStr = IF.PC;
         IF.branch = -1;
-        IF.branchPC = -1;
         // cout << IF.PC << endl;
     }
     if (IF.branch == 0)
-    {
+    {   
+        IF.PC-=1;
         IF.branch = 2;
+        IF.InStr = -1;
+        cout << "bye";
     }
     if (IF.branch == 1)
     {
         IF.branch = 3;
+        IF.InStr = -1;
+        IF.PC = IF.branchPC-1;
+        IF.branchPC = -1;
     }
 
     IF.PC++;

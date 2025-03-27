@@ -206,6 +206,7 @@ void Decoder_F(string opcode, string instr)
             ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
             // For shift immediates, the shift amount comes from bits 7-11 (shamt)
             ID.Imm = stoi(instr.substr(7, 5), nullptr, 2);
+
             ID.RegWrite = true;
             ID.RegDst = false;
             ID.Branch = false;
@@ -802,7 +803,7 @@ void Decoder_F(string opcode, string instr)
         IF.branchPC = IF.PC + ID.Imm / 4 - 1; // Set jump target (instruction index)
         IF.branch = 1;
     
-        ID.RegWrite = false;
+        ID.RegWrite = true;
         ID.Jump = false;
         ID.Branch = false;
         ID.MemRead = false;
@@ -824,7 +825,7 @@ void Decoder_F(string opcode, string instr)
         }
         ID.Imm = imm_val;
         //cout << ID.Imm << "gi" << endl;
-        IF.branchPC = IF.branchPC = RegFile[ID.RR1].value + ID.Imm/4;  // Jump target
+        IF.branchPC = RegFile[ID.RR1].value + ID.Imm/4;  // Jump target
         IF.branch = 1;
         if (ID.WR != 0)
             RegFile[ID.WR].value = IF.PC; // Save the return address in rd
