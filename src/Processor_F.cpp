@@ -385,46 +385,7 @@ int main(int argc, char **argv)
                 stages.push_back(stageName(Output[i][cycle]));
             }
         }
-    
-        // Step 2: Process the stages vector
-        // vector<string> processed;
-        // size_t j = 0;
-        // while (j < stages.size()-3) {
-        //     if (stages[j] == "-") {
-        //         size_t count = 0;
-        //         // Count consecutive dashes
-        //         while (j < stages.size() && stages[j] == "-") {
-        //             count++;
-        //             j++;
-        //         }
-        //         if (count >= 3) {
-        //             // Replace three or more dashes with spaces
-        //             for (size_t k = 0; k < count; k++) {
-        //                 processed.push_back(" ");
-        //             }
-        //         } else if (count == 1 && j < stages.size() && stages[j] == "ID") {
-        //             // Reorder "-;ID" to "ID;-"
-        //             processed.push_back("ID");
-        //             processed.push_back("-");
-        //             j++;  // Skip 'ID'
-        //         } else if (count == 2 && j < stages.size() && stages[j] == "ID") {
-        //             // Reorder "-;-;ID" to "ID;-;-"
-        //             processed.push_back("ID");
-        //             processed.push_back("-");
-        //             processed.push_back("-");
-        //             j++;  // Skip 'ID'
-        //         } else {
-        //             // Fewer than 3 dashes, not followed by 'ID'
-        //             for (size_t k = 0; k < count; k++) {
-        //                 processed.push_back("-");
-        //             }
-        //         }
-        //     } else {
-        //         // Non-dash elements are copied as is
-        //         processed.push_back(stages[j]);
-        //         j++;
-        //     }
-        // }
+
     
         // Step 3: Print the processed stages to the output file
         outfile << instructions_print[i];
