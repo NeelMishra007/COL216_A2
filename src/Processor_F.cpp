@@ -220,8 +220,7 @@ int main(int argc, char **argv)
         {
             Output[IF.InStr][cycle] = 1;
         }
-
-        // cout << "Cycle " << cycle << ": IF:" << IF.InStr << " ID:" << ID.InStr << " EX:" << EX.InStr << " MEM:" << DM.InStr << " WB:" << WB.InStr << endl;
+        //cout << "Cycle " << cycle << ": IF:" << IF.InStr << " ID:" << ID.InStr << " EX:" << EX.InStr << " MEM:" << DM.InStr << " WB:" << WB.InStr << endl;
     }
     string output_filename = "../outputfiles/_forward_out.txt";
     ofstream outfile(output_filename);
@@ -503,7 +502,7 @@ void process_EX()
         else if (WB.RegWrite && WB.WriteReg == ID.RR2)
             arg2 = (WB.MemtoReg ? WB.Read_data : WB.ALU_res);
     }
-    cout << arg1 << " " << arg2 << "hi" << endl;
+    //cout << arg1 << " " << arg2 << "hi" << endl;
     switch (ID.ALUOp)
     {
     case 2: // ADD (also used for address calculation)
@@ -737,7 +736,7 @@ void process_WB()
 
     if (WB.RegWrite)
     {
-    RegFile[WB.WriteReg].value = (WB.MemtoReg ? WB.Read_data : WB.ALU_res);
-    cout << WB.WriteReg << " " << RegFile[WB.WriteReg].value << endl;
+        RegFile[WB.WriteReg].value = (WB.MemtoReg ? WB.Read_data : WB.ALU_res);
+        //cout << WB.WriteReg << " " << RegFile[WB.WriteReg].value << endl;
     }
 }

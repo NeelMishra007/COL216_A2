@@ -205,7 +205,7 @@ int main(int argc, char **argv)
         if (IF.InStr != -1 && IF.InStr < total_instructions) {
             Output[IF.InStr][cycle] = 1;
         }
-
+        //cout << "Cycle " << cycle << RegFile[3].value << " " << RegFile[4].value  << " " << RegFile[5].value << endl;
         //cout << "Cycle " << cycle << ": IF:" << IF.InStr << " ID:" << ID.InStr << " EX:" << EX.InStr << " MEM:" << DM.InStr << " WB:" << WB.InStr << endl;
     }
     string output_filename = "../outputfiles/_noforward_out.txt";
@@ -633,7 +633,7 @@ void process_WB()
     if (WB.RegWrite)
     {
         RegFile[WB.WriteReg].value = (WB.MemtoReg ? WB.Read_data : WB.ALU_res);
-        cout << WB.WriteReg << " " << RegFile[WB.WriteReg].value << endl;
+        //cout << WB.WriteReg << " " << RegFile[WB.WriteReg].value << endl;
         
     }
 }

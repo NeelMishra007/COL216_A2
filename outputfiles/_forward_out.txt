@@ -1,7 +1,4 @@
-addi x5 x5 1;IF;ID;EX;MEM;WB
-sw x5 0 x0; ;IF;ID;EX;MEM;WB
-sw x5 1 x0; ; ;IF;ID;EX;MEM;WB; ; ; ; ; ;IF;ID;EX;MEM;WB; ; ; ; ; ;IF;ID;EX;MEM;WB; ; ; ; ; ;IF;ID;EX;MEM;WB; ; ; ; ; ;IF;ID;EX;MEM;WB
-lw x3 0 x0; ; ; ;IF;ID;EX;MEM;WB; ; ; ; ; ;IF;ID;EX;MEM;WB; ; ; ; ; ;IF;ID;EX;MEM;WB; ; ; ; ; ;IF;ID;EX;MEM;WB; ; ; ; ; ;IF;ID;EX;MEM;WB
-lw x4 0 x3; ; ; ; ;IF;ID;-;EX;MEM;WB; ; ; ; ;IF;ID;-;EX;MEM;WB; ; ; ; ;IF;ID;-;EX;MEM;WB; ; ; ; ;IF;ID;-;EX;MEM;WB; ; ; ; ;IF;ID;-;EX;MEM;WB
-blt x0 x4 8; ; ; ; ; ; ;IF;ID;-;-;EX;MEM;WB; ; ; ;IF;ID;-;-;EX;MEM;WB; ; ; ;IF;ID;-;-;EX;MEM;WB; ; ; ;IF;ID;-;-;EX;MEM;WB; ; ; ;IF;ID;-;-
-jal x1 -16; ; ; ; ; ; ; ; ; ;IF;ID;-;EX;MEM;WB; ; ; ; ;IF;ID;-;EX;MEM;WB; ; ; ; ;IF;ID;-;EX;MEM;WB; ; ; ; ;IF;ID;-;EX;MEM;WB; ; ; ; ;IF
+addi x1 x1 768;IF;ID;EX;MEM;WB
+sw x1 0 x0; ;IF;ID;EX;MEM;WB
+lb x2 0 x0; ; ;IF;ID;EX;MEM;WB
+lb x2 1 x0; ; ; ;IF;ID;EX;MEM;WB
