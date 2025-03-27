@@ -153,11 +153,11 @@ int main(int argc, char **argv)
     while (getline(file, line))
     {
         vector<string> words = splitLine(line);
-        if (words.size() >= 3)
+        if (words.size() >= 2)
         {
-            instructions_hex.push_back(words[1]);
+            instructions_hex.push_back(words[0]);
             string instruction;
-            for (size_t i = 2; i < words.size(); i++) {
+            for (size_t i = 1; i < words.size(); i++) {
                 // Stop concatenating if you hit a comment token.
                 if (!words[i].empty() && words[i][0] == '#') {
                     break;
