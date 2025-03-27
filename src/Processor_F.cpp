@@ -186,9 +186,9 @@ int main(int argc, char **argv)
     int total_instructions = instructions_hex.size();
     int numCycles = atoi(argv[2]);
 
-    vector<vector<int>> Output(total_instructions, vector<int>(numCycles, -1));
+    vector<vector<int>> Output(total_instructions, vector<int>(numCycles+3, -1));
 
-    for (int cycle = 0; cycle < numCycles; cycle++)
+    for (int cycle = 0; cycle < numCycles+3; cycle++)
     {
 
         process_WB();
@@ -235,20 +235,17 @@ int main(int argc, char **argv)
     streambuf *orig_cout = cout.rdbuf(outfile.rdbuf());
 
     // Rest of the code remains the same...
-
-    for (int i = 0; i < total_instructions; i++)
-    {
-        outfile << instructions_print[i];
+    for (int i = 0; i < total_instructions; i++) {
+        // Step 1: Collect stage representations into a vector
+        vector<string> stages;
         int lastCycle = -1;
-        for (int cycle = 0; cycle < numCycles; cycle++)
-        {
-            if (Output[i][cycle] != -1)
-            {
+        for (int cycle = 0; cycle < numCycles; cycle++) {
+            if (Output[i][cycle] != -1) {
                 lastCycle = cycle;
             }
         }
         bool flag = true;
-        for (int cycle = 0; cycle <= lastCycle; cycle++)
+        for (int cycle = 0; cycle <= lastCycle+3; cycle++)
         {
             if (Output[i][cycle] == 5)
                 flag = true;
@@ -257,17 +254,96 @@ int main(int argc, char **argv)
 
             if (Output[i][cycle] == 5)
             {
-                outfile << ";" << "WB";
+                stages.push_back("WB");
             }
             else if (flag)
-                outfile << ";" << " ";
+                stages.push_back(" ");
             else if (Output[i][cycle] == -1 || Output[i][cycle] == Output[i][cycle - 1])
-                outfile << ";" << "-";
+                stages.push_back("-");
             else
-                outfile << ";" << stageName(Output[i][cycle]);
+                stages.push_back(stageName(Output[i][cycle]));
+        }
+    
+        // Step 2: Process the stages vector
+        vector<string> processed;
+        size_t j = 0;
+        while (j < stages.size()-3) {
+            if (stages[j] == "-") {
+                size_t count = 0;
+                // Count consecutive dashes
+                while (j < stages.size() && stages[j] == "-") {
+                    count++;
+                    j++;
+                }
+                if (count >= 3) {
+                    // Replace three or more dashes with spaces
+                    for (size_t k = 0; k < count; k++) {
+                        processed.push_back(" ");
+                    }
+                } else if (count == 1 && j < stages.size() && stages[j] == "ID") {
+                    // Reorder "-;ID" to "ID;-"
+                    processed.push_back("ID");
+                    processed.push_back("-");
+                    j++;  // Skip 'ID'
+                } else if (count == 2 && j < stages.size() && stages[j] == "ID") {
+                    // Reorder "-;-;ID" to "ID;-;-"
+                    processed.push_back("ID");
+                    processed.push_back("-");
+                    processed.push_back("-");
+                    j++;  // Skip 'ID'
+                } else {
+                    // Fewer than 3 dashes, not followed by 'ID'
+                    for (size_t k = 0; k < count; k++) {
+                        processed.push_back("-");
+                    }
+                }
+            } else {
+                // Non-dash elements are copied as is
+                processed.push_back(stages[j]);
+                j++;
+            }
+        }
+    
+        // Step 3: Print the processed stages to the output file
+        outfile << instructions_print[i];
+        for (const string& stage : processed) {
+            outfile << ";" << stage;
         }
         outfile << endl;
     }
+
+    // for (int i = 0; i < total_instructions; i++)
+    // {
+    //     outfile << instructions_print[i];
+    //     int lastCycle = -1;
+    //     for (int cycle = 0; cycle < numCycles; cycle++)
+    //     {
+    //         if (Output[i][cycle] != -1)
+    //         {
+    //             lastCycle = cycle;
+    //         }
+    //     }
+    //     bool flag = true;
+    //     for (int cycle = 0; cycle <= lastCycle; cycle++)
+    //     {
+    //         if (Output[i][cycle] == 5)
+    //             flag = true;
+    //         else if (Output[i][cycle] != -1)
+    //             flag = false;
+
+    //         if (Output[i][cycle] == 5)
+    //         {
+    //             outfile << ";" << "WB";
+    //         }
+    //         else if (flag)
+    //             outfile << ";" << " ";
+    //         else if (Output[i][cycle] == -1 || Output[i][cycle] == Output[i][cycle - 1])
+    //             outfile << ";" << "-";
+    //         else
+    //             outfile << ";" << stageName(Output[i][cycle]);
+    //     }
+    //     outfile << endl;
+    // }
 
     // Restore original cout
     cout.rdbuf(orig_cout);
@@ -427,7 +503,7 @@ void process_EX()
         else if (WB.RegWrite && WB.WriteReg == ID.RR2)
             arg2 = (WB.MemtoReg ? WB.Read_data : WB.ALU_res);
     }
-
+    cout << arg1 << " " << arg2 << "hi" << endl;
     switch (ID.ALUOp)
     {
     case 2: // ADD (also used for address calculation)
