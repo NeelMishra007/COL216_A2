@@ -7,6 +7,7 @@ using namespace std;
 
 void Decoder_F(string opcode, string instr)
 {
+    bool temp = false;
     if (opcode == "0110011")
     {
         // ADD: opcode = 0110011, funct7 = 0000000, funct3 = 000
@@ -810,19 +811,20 @@ void Decoder_F(string opcode, string instr)
             imm_val -= (1 << 20); // Correctly sign-extend by subtracting 2^20
         }
         ID.Imm = imm_val << 1; // Shift left by 1 to get byte offset
-        if (ID.WR != 0)
-            RegFile[ID.WR].value = IF.PC; // Save the return address in rd
+        // if (ID.WR != 0)
+        //     RegFile[ID.WR].value = IF.PC; // Save the return address in rd
         //cout << ID.Imm << endl;
         IF.branchPC = IF.PC + ID.Imm / 4 - 1; // Set jump target (instruction index)
         IF.branch = 1;
-    
+        
+        temp = true; // for WB write
         ID.RegWrite = true;
         ID.Jump = false;
         ID.Branch = false;
         ID.MemRead = false;
         ID.MemWrite = false;
-        ID.ALUSrc = false;
-        ID.ALUOp = 0; // No ALU op needed
+        ID.ALUSrc = true;
+        ID.ALUOp = 2; // No ALU op needed
         ID.MemtoReg = false;
         ID.JumpAndLink = false; // Optional
     }
@@ -839,24 +841,77 @@ void Decoder_F(string opcode, string instr)
         }
         ID.Imm = imm_val;
         //cout << ID.Imm << "gi" << endl;
-        IF.branchPC = RegFile[ID.RR1].value + ID.Imm/4;  // Jump target
-        IF.branch = 1;
-        if (ID.WR != 0)
-            RegFile[ID.WR].value = IF.PC; // Save the return address in rd
+        int arg1 = RegFile[ID.RR1].value;
 
-        ID.RegWrite = false;  // Write PC + 4 to rd
+        if (EX.RegWrite && (EX.WriteReg == ID.RR1) && !EX.MemtoReg) // forward last ALU one stall
+        {
+            ID.ALU_stall_prev = true;
+            IF.stall = true;
+            ID.InStr = -1;
+            //cout << "hi";
+            return;
+        }
+        if (EX.RegWrite && (EX.WriteReg == ID.RR1) && EX.MemtoReg) // forawrd last DM two stall
+        {
+            ID.DM_stall_prev = 1; // used at top in id.stall
+            ID.stall = true;
+            IF.stall = true;
+            ID.InStr = -1;
+            return;
+        }
+        if (DM.RegWrite && (DM.WriteReg == ID.RR1) && !DM.MemtoReg) // forward last to last instr ALU, no stall
+        {
+            if (DM.WriteReg == ID.RR1)
+                arg1 = DM.ALU_res;
+        }
+        if (DM.RegWrite && (DM.WriteReg == ID.RR1) && DM.MemtoReg) // forward last to last DM, one stall
+        {
+            ID.DM_stall_prev2 = true;
+            IF.stall = true;
+            ID.InStr = -1;
+            return;
+        }
+
+        if (ID.ALU_stall_prev)
+        {
+            //cout << "hi";
+            arg1 = DM.ALU_res;
+            ID.ALU_stall_prev = false;
+        }
+        if (ID.DM_stall_prev2)
+        {
+           arg1 = WB.Read_data;
+            ID.DM_stall_prev2 = false;
+        }
+        if (ID.DM_stall_prev == 1)
+        {
+            //cout << "hi2";
+            arg1 = WB.Read_data;
+            ID.DM_stall_prev = 0;
+        }
+
+        IF.branchPC = arg1 + ID.Imm/4;  // Jump target
+        IF.branch = 1;
+        // if (ID.WR != 0)
+        //     RegFile[ID.WR].value = IF.PC; // Save the return address in rd
+
+        ID.RegWrite = true;  // Write PC + 4 to rd
         ID.Jump = false;      // Jump instruction
         ID.Branch = false;
         ID.MemRead = false;
         ID.MemWrite = false;
-        ID.ALUSrc = false;    // ALU uses immediate
-        ID.ALUOp = 0;        // Addition for rs1 + imm
+        ID.ALUSrc = true;    // ALU uses immediate
+        ID.ALUOp = 2;        // Addition for rs1 + imm
         ID.MemtoReg = false;
         ID.JumpAndLink = false; // Optional, for consistency with JAL
         ID.JumpReg = false;   // Optional, to indicate register-based jump
     }
     ID.RD1 = RegFile[max(0, ID.RR1)].value;
     ID.RD2 = RegFile[max(0, ID.RR2)].value;
+    if (temp){    // wb of jal jalr
+        ID.Imm = 0;
+        ID.RD1 = IF.PC; 
+    }
     //cout << ID.RR1 << " " << ID.RD1 << " " << ID.RR2 << " " << ID.RD2 << " " << ID.Imm << endl;
     if (ID.WR == 0) ID.RegWrite = false;
 }

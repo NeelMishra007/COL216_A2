@@ -475,6 +475,7 @@ void process_IF(const vector<string> &instructions)
 
 void process_ID(const vector<string> &instructions)
 {
+    bool temp = false;
     if (ID.stall)
     {
         // cout << "ID stage stalled; holding instruction " << ID.InStr << endl;
