@@ -1,4 +1,0 @@
-addi x1 x1 768;IF;ID;EX;MEM;WB
-sw x1 0 x0; ;IF;ID;EX;MEM;WB
-lb x2 0 x0; ; ;IF;ID;EX;MEM;WB
-lb x2 1 x0; ; ; ;IF;ID;EX;MEM;WB

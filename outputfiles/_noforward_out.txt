@@ -1,6 +1,0 @@
-addi x1 x0 1;IF;ID;EX;MEM;WB
-add x2 x0 x1; ;IF;ID;-;-;EX;MEM;WB
-addi x3 x0 1; ; ; ; ;IF;ID;EX;MEM;WB
-add x4 x3 x1; ; ; ; ; ;IF;ID;-;-;EX;MEM;WB
-addi x6 x4 1; ; ; ; ; ; ; ; ;IF;ID;-;-;EX;MEM;WB
-add x5 x6 x4; ; ; ; ; ; ; ; ; ; ; ;IF;ID;-;-;EX;MEM;WB

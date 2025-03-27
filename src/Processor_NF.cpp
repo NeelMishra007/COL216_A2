@@ -208,7 +208,17 @@ int main(int argc, char **argv)
         //cout << "Cycle " << cycle << RegFile[3].value << " " << RegFile[4].value  << " " << RegFile[5].value << endl;
         //cout << "Cycle " << cycle << ": IF:" << IF.InStr << " ID:" << ID.InStr << " EX:" << EX.InStr << " MEM:" << DM.InStr << " WB:" << WB.InStr << endl;
     }
-    string output_filename = "../outputfiles/_noforward_out.txt";
+    string input_filename = argv[1];
+
+    // Find the last slash to get the filename
+    size_t last_slash = input_filename.find_last_of("/");
+    string filename = (last_slash == string::npos) ? input_filename : 
+                      input_filename.substr(last_slash + 1);
+
+    // Construct output filename
+    string output_filename = "../outputfiles/" + filename.substr(0, filename.find_last_of('.')) + "_noforward_out.txt";
+
+    // Open output file
     ofstream outfile(output_filename);
     if (!outfile) {
         cerr << "Error: Unable to open output file " << output_filename << endl;
@@ -633,7 +643,7 @@ void process_WB()
     if (WB.RegWrite)
     {
         RegFile[WB.WriteReg].value = (WB.MemtoReg ? WB.Read_data : WB.ALU_res);
-        //cout << WB.WriteReg << " " << RegFile[WB.WriteReg].value << endl;
+        cout << WB.WriteReg << " " << RegFile[WB.WriteReg].value << endl;
         
     }
 }
