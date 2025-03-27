@@ -163,11 +163,11 @@ int main(int argc, char **argv)
     while (getline(file, line))
     {
         vector<string> words = splitLine(line);
-        if (words.size() >= 3)
+        if (words.size() >= 2)
         {
-            instructions_hex.push_back(words[1]);
+            instructions_hex.push_back(words[0]);
             string instruction;
-            for (size_t i = 2; i < words.size(); i++)
+            for (size_t i = 1; i < words.size(); i++)
             {
                 // Stop concatenating if you hit a comment token.
                 if (!words[i].empty() && words[i][0] == '#')
@@ -241,7 +241,7 @@ int main(int argc, char **argv)
         {
             Output[IF.PC][cycle] = 1;
         }
-        cout << "Cycle " << cycle << ": IF:" << IF.PC << " ID:" << IF.InStr << " EX:" << ID.InStr << " MEM:" << EX.InStr << " WB:" << DM.InStr << endl;
+        //cout << "Cycle " << cycle << ": IF:" << IF.PC << " ID:" << IF.InStr << " EX:" << ID.InStr << " MEM:" << EX.InStr << " WB:" << DM.InStr << endl;
         process_WB();
         process_MEM();
         process_EX();
@@ -460,7 +460,7 @@ void process_IF(const vector<string> &instructions)
         IF.PC-=1;
         IF.branch = 2;
         IF.InStr = -1;
-        cout << "bye";
+        //cout << "bye";
     }
     if (IF.branch == 1)
     {
@@ -825,6 +825,6 @@ void process_WB()
     if (WB.RegWrite)
     {
         RegFile[WB.WriteReg].value = (WB.MemtoReg ? WB.Read_data : WB.ALU_res);
-        cout << WB.WriteReg << " " << RegFile[WB.WriteReg].value << endl;
+        //cout << WB.WriteReg << " " << RegFile[WB.WriteReg].value << endl;
     }
 }
