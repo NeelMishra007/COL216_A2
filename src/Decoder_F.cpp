@@ -176,6 +176,7 @@ void Decoder_F(string opcode, string instr)
         if (instr.substr(17, 3) == "000")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
+            ID.RR2 = -1;
             ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
 
             // Extract 12-bit immediate and sign-extend it
@@ -203,6 +204,7 @@ void Decoder_F(string opcode, string instr)
         else if (instr.substr(17, 3) == "001" && instr.substr(0, 7) == "0000000")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
+            ID.RR2 = -1;
             ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
             // For shift immediates, the shift amount comes from bits 7-11 (shamt)
             ID.Imm = stoi(instr.substr(7, 5), nullptr, 2);
@@ -220,6 +222,7 @@ void Decoder_F(string opcode, string instr)
         else if (instr.substr(17, 3) == "101" && instr.substr(0, 7) == "0000000")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
+            ID.RR2 = -1;
             ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
             // Shift amount is in bits 7-11 (shamt)
             ID.Imm = stoi(instr.substr(7, 5), nullptr, 2);
@@ -237,6 +240,7 @@ void Decoder_F(string opcode, string instr)
         else if (instr.substr(17, 3) == "101" && instr.substr(0, 7) == "0100000")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
+            ID.RR2 = -1;
             ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
             // Shift amount is in bits 7-11 (shamt)
             ID.Imm = stoi(instr.substr(7, 5), nullptr, 2);
@@ -254,6 +258,7 @@ void Decoder_F(string opcode, string instr)
         else if (instr.substr(17, 3) == "010")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
+            ID.RR2 = -1;
             ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
 
             // Extract and sign-extend the immediate
@@ -280,6 +285,7 @@ void Decoder_F(string opcode, string instr)
         else if (instr.substr(17, 3) == "011")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
+            ID.RR2 = -1;
             ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
 
             // Sign-extend the immediate (even for SLTIU, the immediate is sign-extended)
@@ -306,6 +312,7 @@ void Decoder_F(string opcode, string instr)
         else if (instr.substr(17, 3) == "111")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
+            ID.RR2 = -1;
             ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
 
             // Sign-extend the immediate
@@ -332,6 +339,7 @@ void Decoder_F(string opcode, string instr)
         else if (instr.substr(17, 3) == "110")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
+            ID.RR2 = -1;
             ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
 
             // Sign-extend the immediate
@@ -358,6 +366,7 @@ void Decoder_F(string opcode, string instr)
         else if (instr.substr(17, 3) == "100")
         {
             ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2);
+            ID.RR2 = -1;
             ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
 
             // Sign-extend the immediate
@@ -384,7 +393,8 @@ void Decoder_F(string opcode, string instr)
     // LUI: Load Upper Immediate (U-type instruction)
     else if (opcode == "0110111")
     {
-        // Extract the destination register
+        ID.RR1 = -1;
+        ID.RR2 = -1;
         ID.WR = stoi(instr.substr(20, 5), nullptr, 2);
 
         // Extract the 20-bit immediate and shift left by 12 bits
@@ -542,6 +552,7 @@ void Decoder_F(string opcode, string instr)
     else if (opcode == "0000011")
     {
         ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2); // base register
+        ID.RR2 = -1;
         ID.WR = stoi(instr.substr(20, 5), nullptr, 2);  // destination register
 
         // Sign-extend the immediate
@@ -787,6 +798,8 @@ void Decoder_F(string opcode, string instr)
     // J-type: JAL (Jump and Link)
     else if (opcode == "1101111")
     {
+        ID.RR1 = -1;
+        ID.RR2 = -1;
         ID.WR = stoi(instr.substr(20, 5), nullptr, 2); // rd
         // Extract the 20-bit immediate: imm[20|19:12|11|10:1]
         string imm_str = instr.substr(0, 1) + instr.substr(12, 8) + instr.substr(11, 1) + instr.substr(1, 10);
@@ -815,6 +828,7 @@ void Decoder_F(string opcode, string instr)
     else if (opcode == "1100111" && instr.substr(17, 3) == "000")
     {
         ID.RR1 = stoi(instr.substr(12, 5), nullptr, 2); // rs1
+        ID.RR2 = -1;
         ID.WR = stoi(instr.substr(20, 5), nullptr, 2);  // rd
         string imm_str = instr.substr(0, 12);
         int32_t imm_val = stoi(imm_str, nullptr, 2);
@@ -842,5 +856,6 @@ void Decoder_F(string opcode, string instr)
     }
     ID.RD1 = RegFile[max(0, ID.RR1)].value;
     ID.RD2 = RegFile[max(0, ID.RR2)].value;
+    //cout << ID.RR1 << " " << ID.RD1 << " " << ID.RR2 << " " << ID.RD2 << " " << ID.Imm << endl;
     if (ID.WR == 0) ID.RegWrite = false;
 }
