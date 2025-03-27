@@ -792,7 +792,6 @@ void Decoder_NF(IFStage &IF, IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB
         ID.ALUSrc = true;
         ID.ALUOp = 2; // No ALU op needed
         ID.MemtoReg = false;
-        return;
     }
     else if (opcode == "1100111" && instr.substr(17, 3) == "000")
     {
@@ -820,7 +819,6 @@ void Decoder_NF(IFStage &IF, IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB
         ID.ALUSrc = true;    // ALU uses immediate
         ID.ALUOp = 2;        // Addition for rs1 + imm
         ID.MemtoReg = false;
-        return;
     }
     if (EX.RegWrite && (ID.RR1 == EX.WriteReg || ID.RR2 == EX.WriteReg) || DM.RegWrite && (ID.RR1 == DM.WriteReg || ID.RR2 == DM.WriteReg)) {
         //cout << ID.RR1 << " " << ID.RR2 << " " << EX.WriteReg << " " << DM.WriteReg << endl;
