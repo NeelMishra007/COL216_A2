@@ -1,0 +1,21 @@
+0:        00100293        addi x5 x0 1
+4:        04b2d663        bge x5 x11 76
+8:        00229313        slli x6 x5 2
+c:        00a30333        add x6 x6 x10
+10:        00032383        lw x7 0 x6
+14:        fff28e13        addi x28 x5 -1
+18:        020e4263        blt x28 x0 36
+1c:        002e1e93        slli x29 x28 2
+20:        00ae8eb3        add x29 x29 x10
+24:        000eaf03        lw x30 0 x29
+28:        007f5463        bge x30 x7 8
+2c:        0100006f        jal x0 16
+30:        01eea223        sw x30 4 x29
+34:        fffe0e13        addi x28 x28 -1
+38:        fe1ff06f        jal x0 -32
+3c:        002e1e93        slli x29 x28 2
+40:        00ae8eb3        add x29 x29 x10
+44:        007ea223        sw x7 4 x29
+48:        00128293        addi x5 x5 1
+4c:        fb9ff06f        jal x0 -72
+50:        00008067        jalr x0 x1 0
