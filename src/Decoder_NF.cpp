@@ -805,7 +805,7 @@ void Decoder_NF(IFStage &IF, IDStage &ID, EXStage &EX, MEMStage &DM, WBStage &WB
         }
         ID.Imm = imm_val;
         //cout << ID.Imm << "gi" << endl;
-        IF.branchPC = RegFile[ID.RR1].value + ID.Imm/4;  // Jump target
+        IF.branchPC = (RegFile[ID.RR1].value + ID.Imm)/4;  // Jump target
         IF.branch = 1;
         if (ID.WR != 0)
             RegFile[ID.WR].value = IF.PC; // Save the return address in rd

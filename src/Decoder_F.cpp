@@ -890,7 +890,7 @@ void Decoder_F(string opcode, string instr)
             ID.DM_stall_prev = 0;
         }
 
-        IF.branchPC = arg1 + ID.Imm/4;  // Jump target
+        IF.branchPC = (arg1 + ID.Imm)/4;  // Jump target
         IF.branch = 1;
         // if (ID.WR != 0)
         //     RegFile[ID.WR].value = IF.PC; // Save the return address in rd
