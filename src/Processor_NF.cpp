@@ -205,10 +205,20 @@ int main(int argc, char **argv)
         if (IF.InStr != -1 && IF.InStr < total_instructions) {
             Output[IF.InStr][cycle] = 1;
         }
-
+        //cout << "Cycle " << cycle << RegFile[3].value << " " << RegFile[4].value  << " " << RegFile[5].value << endl;
         //cout << "Cycle " << cycle << ": IF:" << IF.InStr << " ID:" << ID.InStr << " EX:" << EX.InStr << " MEM:" << DM.InStr << " WB:" << WB.InStr << endl;
     }
-    string output_filename = "../outputfiles/_noforward_out.txt";
+    string input_filename = argv[1];
+
+    // Find the last slash to get the filename
+    size_t last_slash = input_filename.find_last_of("/");
+    string filename = (last_slash == string::npos) ? input_filename : 
+                      input_filename.substr(last_slash + 1);
+
+    // Construct output filename
+    string output_filename = "../outputfiles/" + filename.substr(0, filename.find_last_of('.')) + "_noforward_out.txt";
+
+    // Open output file
     ofstream outfile(output_filename);
     if (!outfile) {
         cerr << "Error: Unable to open output file " << output_filename << endl;
@@ -219,26 +229,79 @@ int main(int argc, char **argv)
     streambuf* orig_cout = cout.rdbuf(outfile.rdbuf());
     
     // Rest of the code remains the same...
-    
     for (int i = 0; i < total_instructions; i++) {
-        outfile << instructions_print[i];
+        // Step 1: Collect stage representations into a vector
+        vector<string> stages;
         int lastCycle = -1;
         for (int cycle = 0; cycle < numCycles; cycle++) {
             if (Output[i][cycle] != -1) {
                 lastCycle = cycle;
             }
-        }    
+        }
         bool flag = true;
-        for (int cycle = 0; cycle <= lastCycle; cycle++) {
-            if (Output[i][cycle] == 5) flag = true;
-            else if (Output[i][cycle] != -1) flag = false;
-            
-            if (Output[i][cycle] == 5) {
-                outfile << ";" << "WB";
+        for (int cycle = 0; cycle <= lastCycle+3; cycle++)
+        {
+            if (Output[i][cycle] == 5)
+                flag = true;
+            else if (Output[i][cycle] != -1)
+                flag = false;
+
+            if (Output[i][cycle] == 5)
+            {
+                stages.push_back("WB");
             }
-            else if (flag) outfile << ";" << " ";
-            else if (Output[i][cycle] == -1 || Output[i][cycle] == Output[i][cycle - 1]) outfile << ";" << "-";
-            else outfile << ";" << stageName(Output[i][cycle]);
+            else if (flag)
+                stages.push_back(" ");
+            else if (Output[i][cycle] == -1 || Output[i][cycle] == Output[i][cycle - 1])
+                stages.push_back("-");
+            else
+                stages.push_back(stageName(Output[i][cycle]));
+        }
+    
+        // Step 2: Process the stages vector
+        vector<string> processed;
+        size_t j = 0;
+        while (j < stages.size()-3) {
+            if (stages[j] == "-") {
+                size_t count = 0;
+                // Count consecutive dashes
+                while (j < stages.size() && stages[j] == "-") {
+                    count++;
+                    j++;
+                }
+                if (count >= 3) {
+                    // Replace three or more dashes with spaces
+                    for (size_t k = 0; k < count; k++) {
+                        processed.push_back(" ");
+                    }
+                } else if (count == 1 && j < stages.size() && stages[j] == "ID") {
+                    // Reorder "-;ID" to "ID;-"
+                    processed.push_back("ID");
+                    processed.push_back("-");
+                    j++;  // Skip 'ID'
+                } else if (count == 2 && j < stages.size() && stages[j] == "ID") {
+                    // Reorder "-;-;ID" to "ID;-;-"
+                    processed.push_back("ID");
+                    processed.push_back("-");
+                    processed.push_back("-");
+                    j++;  // Skip 'ID'
+                } else {
+                    // Fewer than 3 dashes, not followed by 'ID'
+                    for (size_t k = 0; k < count; k++) {
+                        processed.push_back("-");
+                    }
+                }
+            } else {
+                // Non-dash elements are copied as is
+                processed.push_back(stages[j]);
+                j++;
+            }
+        }
+    
+        // Step 3: Print the processed stages to the output file
+        outfile << instructions_print[i];
+        for (const string& stage : processed) {
+            outfile << ";" << stage;
         }
         outfile << endl;
     }

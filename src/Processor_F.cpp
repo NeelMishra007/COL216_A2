@@ -7,6 +7,8 @@
 #include <cstdlib>
 #include <cstdint>
 #include <cstdio>
+#include <string.h>
+#include <stdlib.h>
 #include "Decoder_F.hpp"
 #include "Processor.hpp"
 
@@ -247,7 +249,17 @@ int main(int argc, char **argv)
         process_IF(instructions_hex);
 
     }
-    string output_filename = "../outputfiles/_forward_out.txt";
+    string input_filename = argv[1];
+
+    // Find the last slash to get the filename
+    size_t last_slash = input_filename.find_last_of("/");
+    string filename = (last_slash == string::npos) ? input_filename : 
+                      input_filename.substr(last_slash + 1);
+
+    // Construct output filename
+    string output_filename = "../outputfiles/" + filename.substr(0, filename.find_last_of('.')) + "_forward_out.txt";
+
+    // Open output file
     ofstream outfile(output_filename);
     if (!outfile)
     {
@@ -530,7 +542,7 @@ void process_EX()
         else if (WB.RegWrite && WB.WriteReg == ID.RR2)
             arg2 = (WB.MemtoReg ? WB.Read_data : WB.ALU_res);
     }
-    cout << arg1 << " " << arg2 << "hi" << endl;
+    //cout << arg1 << " " << arg2 << "hi" << endl;
     switch (ID.ALUOp)
     {
     case 2: // ADD (also used for address calculation)
@@ -764,7 +776,7 @@ void process_WB()
 
     if (WB.RegWrite)
     {
-    RegFile[WB.WriteReg].value = (WB.MemtoReg ? WB.Read_data : WB.ALU_res);
-    cout << WB.WriteReg << " " << RegFile[WB.WriteReg].value << endl;
+        RegFile[WB.WriteReg].value = (WB.MemtoReg ? WB.Read_data : WB.ALU_res);
+        cout << WB.WriteReg << " " << RegFile[WB.WriteReg].value << endl;
     }
 }
