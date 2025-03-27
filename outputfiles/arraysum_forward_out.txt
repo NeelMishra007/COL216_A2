@@ -1,7 +1,7 @@
 addi x5 x0 0;IF;ID;EX;MEM;WB; ; ; ;IF;ID;EX;MEM;WB; ; ; ;IF;ID;EX;MEM;WB; ; ; ;IF;ID;EX;MEM;WB; ; ; ;IF;ID;EX;MEM;WB; ; ; ;IF;ID;EX;MEM;WB; ; ; ;IF;ID
 addi x6 x0 0; ;IF;ID;EX;MEM;WB; ; ; ;IF;ID;EX;MEM;WB; ; ; ;IF;ID;EX;MEM;WB; ; ; ;IF;ID;EX;MEM;WB; ; ; ;IF;ID;EX;MEM;WB; ; ; ;IF;ID;EX;MEM;WB; ; ; ;IF
 bge x6 x11 28; ; ;IF;ID;-;EX;MEM;WB; ; ;IF;ID;-;EX;MEM;WB; ; ;IF;ID;-;EX;MEM;WB; ; ;IF;ID;-;EX;MEM;WB; ; ;IF;ID;-;EX;MEM;WB; ; ;IF;ID;-;EX;MEM;WB
-slli x7 x6 2; ; ; ;IF; ; ; ; ; ; ; ;IF; ; ; ; ; ; ; ;IF; ; ; ; ; ; ; ;IF; ; ; ; ; ; ; ;IF; ; ; ; ; ; ; ;IF; ; ; ; 
+slli x7 x6 2; ; ; ;IF;-; ; ; ; ; ; ;IF;-; ; ; ; ; ; ;IF;-; ; ; ; ; ; ;IF;-; ; ; ; ; ; ;IF;-; ; ; ; ; ; ;IF;-
 add x7 x10 x7
 lw x7 0 x7
 add x5 x5 x7

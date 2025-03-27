@@ -1,0 +1,10 @@
+addi x12 x0 1;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID
+beq x11 x0 28; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF
+andi x5 x11 1; ; ;IF; ; ; ; ; ;IF; ; ; ; ; ;IF; ; ; ; ; ;IF; ; ; ; ; ;IF; ; ; ; ; ;IF; ; ; ; ; ;IF; ; ; ; ; ;IF
+beq x5 x0 8
+mul x12 x12 x10
+mul x10 x10 x10
+srli x11 x11 1
+jal x0 -24
+addi x10 x12 0; ; ; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB
+jalr x0 x1 0; ; ; ; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM;WB; ;IF;ID;EX;MEM
